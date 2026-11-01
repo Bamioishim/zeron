@@ -1,3 +1,13 @@
+## Zeron contract build
+
+For production integrations, builders must use the Zeron project WIF token—not any arbitrary token with the same symbol:
+
+- **Network:** Robinhood Chain mainnet (chain ID 4663)
+- **Canonical project WIF:** `0x5173b8eA6923c2d40267890D45C46a3480954773`
+- **Explorer:** https://robinhoodchain.blockscout.com/address/0x5173b8eA6923c2d40267890D45C46a3480954773
+
+`MockWIF` is for local/testnet tests only. Mainnet deployment scripts accept `WIF_TOKEN`, which must be set to the canonical address above.
+
 ## Foundry
 
 **Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**

@@ -17,9 +17,9 @@ async function armsOf(player: Hex) {
 /** one batched reward claim per verified run (kills + clear WIF, ammo spent, optional drop) */
 async function signClaim(key: Hex, player: Hex, nonce: bigint, earned: number, ammoUsed: number, drop = 0) {
   const A = (D as any).armory as Hex; if (!A) return null
-  // earned is in game units; real WIF paid = units * rewardScaleBps / 10000 (mainnet: 0.1 WIF per unit, max 20 WIF per run)
+  // earned is in reward units; real WIF paid = units * rewardScaleBps / 10000 (mainnet: 0.1 WIF per unit, max 30 WIF per run)
   const scale = BigInt(D.rewardScaleBps ?? 10000)
-  const amount = BigInt(Math.max(0, Math.min(200, Math.floor(earned)))) * 10n ** 18n * scale / 10000n
+  const amount = BigInt(Math.max(0, Math.min(300, Math.floor(earned)))) * 10n ** 18n * scale / 10000n
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600)
   const sig = await privateKeyToAccount(key).signTypedData({
     domain: { name: 'ZeronArmory', version: '1', chainId: D.chainId, verifyingContract: A },

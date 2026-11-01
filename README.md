@@ -4,6 +4,15 @@ Production (https://zeron-game.vercel.app) runs on **Robinhood Chain mainnet (ch
 The old testnet build is still reachable at https://wif-depths-5ak1srszj-bamioishim.vercel.app (chain 46630, mock WIF).
 Explorer: https://robinhoodchain.blockscout.com
 
+## Canonical project token
+Builders must use the Zeron project WIF token on Robinhood Chain mainnet, not an arbitrary token named WIF:
+
+- **Network:** Robinhood Chain mainnet
+- **Chain ID:** 4663
+- **Project WIF contract:** `0x5173b8eA6923c2d40267890D45C46a3480954773`
+
+The frontend reads this address from `app/src/shared/deployments.json`. The testnet-only `MockWIF` address must not be used for production integrations.
+
 ## Mainnet addresses (chain 4663)
 - WIF (real) [0x5173b8eA6923c2d40267890D45C46a3480954773](https://robinhoodchain.blockscout.com/address/0x5173b8eA6923c2d40267890D45C46a3480954773)
 - WifAccount (7702) [0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392](https://robinhoodchain.blockscout.com/address/0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392)
@@ -16,7 +25,7 @@ Explorer: https://robinhoodchain.blockscout.com
 - Deployer/treasury 0x2bCEc454514201d867982ecDE9766DC2ed87958E · Relayer 0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a · Run signer 0x3A889344dD6D5E39AC319d11C799504ffaac03fe
 
 Burns: real WIF burns are sent to 0x000000000000000000000000000000000000dEaD (contracts deployed with useBurn=false).
-Economy (1/10 of testnet): starter gift 5 WIF (owner-settable, clamped to the pool), ranked entry 10, items 2.5/4/4, weapons 6–25, ammo 1.5, rename 5, rewards ×0.1 (max 10 WIF/day per wallet, paid only while the pool lasts).
+Economy (1/10 of testnet): starter gift 5 WIF (owner-settable, clamped to the pool), ranked entry 10, items 2.5/4/4, weapons 6–25, ammo 1.5, rename 5, rewards of 3 WIF per small enemy, 10 WIF per boss, and 10 WIF per level clear (max 150 WIF/day per wallet, paid only while the pool lasts).
 Gas: players need 0 ETH; each sponsored action costs 0.2 WIF (0.1 to 0xdEaD, 0.1 to the relayer). Sponsor limits: SPONSOR_DAILY_CAP=10 per wallet, auto-pause below SPONSOR_MIN_BALANCE_WEI=5e13, kill switch SPONSOR_PAUSED.
 
 ## Mainnet migration transactions
@@ -113,7 +122,7 @@ Audio stays muted until your first click; toggle with the speaker button.
 - Fights happen in place on the dungeon map (no fight window): floating damage/heal/BLOCK/PARRY numbers, mini HP bars, anime slash finisher (≤15% HP or stagger, skippable, longer for bosses).
 - Controls: mobile cluster ATTACK / BLOCK / POTION / WEAPON (+FINISH); desktop J attack, K block, L weapon, Q potion, F finisher, E interact/attack.
 - Weapons (ZeronArmory `0x8594ECDD0f48a95aDdbC2F1A4e81b4164ad77b6f`): Bow 60, Spear 90, Twin Daggers 120, Fire Staff 150, Pumpkin Launcher 180 (also a Pumpkin King drop), Bazooka 200, War Hammer 250. 50% burned / 50% treasury. Bazooka/Launcher share 3 ammo, refill 15 WIF.
-- Earn WIF: +2/kill, +15–40 per clear (more for bosses), claimed in the same sponsored tx as the checkpoint; server-signed EIP-712 claim, 150 WIF/day cap, paid from the Armory pool (clamped, never reverts). Pool is finite test WIF: top it up by transferring WIF to the Armory.
+- Earn WIF: +3 per small enemy, +10 per boss, and +10 per level clear, claimed in the same sponsored tx as the checkpoint; server-signed EIP-712 claim, 150 WIF/day cap, paid from the Armory pool (clamped, never reverts). Pool is finite test WIF: top it up by transferring WIF to the Armory.
 - Burn tab: total burned + per-sink chips + recent burns with tx links. Leaderboard: @names, costume avatar, level, PvP wins, burned.
 
 ## v4 changes

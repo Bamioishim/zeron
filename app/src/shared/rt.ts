@@ -22,9 +22,9 @@ export const AMMO_W = [5, 7]
 export const EP_MAX = 100, EP_COST = 25, EP_PARRY = 15, EP_POT = 40
 /** boss specials -> the attack pattern they use */
 const BASEMOVE: Record<string, string> = { split: 'heal', raise: 'heal', summon: 'double', bone: 'charge', charge: 'charge', fire: 'charge', slam: 'charge', grab: 'charge' }
-/** WIF earned (in whole WIF): +2 per kill, level clear 15..40 scaling with depth, more for bosses */
-export const killReward = (s: RT) => (isBoss(s) ? 5 : 2)
-export const clearReward = (m: Mode) => (m.kind === 'level' ? Math.min(40, 10 + 5 * m.level) : m.kind === 'event' ? 30 : 15)
+/** WIF earned in mainnet reward units (10 units = 1 WIF): +3 per small enemy, +10 per boss, +10 per level clear. */
+export const killReward = (s: RT) => (isBoss(s) ? 100 : 30)
+export const clearReward = (m: Mode) => (m.kind === 'level' ? 100 : m.kind === 'event' ? 300 : 100)
 export const canFinish = (s: RT) => !s.done && (s.phase === 'stagger' || s.enemyHp <= Math.ceil(foeMax(roomsFor(s.mode)[s.room].hp) * 0.15))
 export interface Ev { r: number; t: number; m: Move }
 const rnd = (s: RT) => { let a = (s.rs = (s.rs + 0x6d2b79f5) >>> 0); a = Math.imul(a ^ (a >>> 15), a | 1); a ^= a + Math.imul(a ^ (a >>> 7), a | 61); return ((a ^ (a >>> 14)) >>> 0) / 4294967296 }

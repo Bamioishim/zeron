@@ -537,7 +537,7 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
         if (f === 'boom') { setBoom(Date.now()); audio.sfx('hit'); navigator.vibrate?.(60) }
         if (f === 'clear') audio.sfx('clear')
         if (f === 'parry' || f === 'blocked') audio.sfx('coin')
-        if (f === 'kill') { addNum({ txt: `+${boss ? 5 : 2} WIF`, cls: 'wif' }, 'foe') }
+        if (f === 'kill') { addNum({ txt: `+${boss ? 10 : 3} WIF`, cls: 'wif' }, 'foe') }
         if (f === 'finish' || f === 'bossfinish') { const k = rooms[Math.min(s.room, rooms.length - 1)]?.key || 'slime'; setFin({ boss: f === 'bossfinish', k: Date.now(), key: k }); audio.sfx('hit'); navigator.vibrate?.([30, 60, 90]); setTimeout(() => setFin((x) => (x && Date.now() - x.k >= (f === 'bossfinish' ? 1500 : 950) ? null : x)), f === 'bossfinish' ? 1600 : 1000) }
         const t = FXTEXT[f]; if (t) addNum({ txt: t, cls: f === 'canfinish' ? 'parry' : 'block' }, 'foe')
       }
@@ -663,7 +663,7 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
         {mode ? <>
           <span className="eyebrow">{modeLabel}</span>
           {bgSave && !result && <span className="savepill">{bgSave}</span>}
-          {run && <span className="hudstats">♥ {run.hp}/{run.maxHp} · ⚔ {run.atk} · 🛡 {run.def} · ✚ {run.potions} · {W.icon}{AMMO_W.includes(run.weapon) ? ` ×${run.ammo}` : ''} · room {Math.min(run.room + 1, rooms.length)}/{rooms.length} · <span className="limet">+{run.earned} WIF</span></span>}
+          {run && <span className="hudstats">♥ {run.hp}/{run.maxHp} · ⚔ {run.atk} · 🛡 {run.def} · ✚ {run.potions} · {W.icon}{AMMO_W.includes(run.weapon) ? ` ×${run.ammo}` : ''} · room {Math.min(run.room + 1, rooms.length)}/{rooms.length} · <span className="limet">+{run.earned * (D.rewardScaleBps ?? 10000) / 10000} WIF</span></span>}
           <button className="btn sm" onClick={leave}>Leave</button>
         </> : <>
           <span className="eyebrow">Flatrock town · the <b className="limet">Gate</b> starts a run, walk up to a <b className="limet">stall</b> and press E</span>
@@ -742,7 +742,7 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
           {mode.kind === 'daily' ? <div>{scoreOf(run).score} pts · +{scoreOf(run).xp} XP · {run.kills} kills · {run.gold} gold</div>
             : mode.kind === 'event' ? <div>The Pumpkin King is smashed! Claim his crown and his Pumpkin Launcher (free).</div>
             : <div className="loot">Boss down! Loot: {(() => { const l = lootFor(mode.level); return `${l.iron} iron, ${l.hide} hide${l.glow ? `, ${l.glow} glow` : ''}` })()}</div>}
-          {run.earned > 0 && <div className="earn">+{run.earned * (D.rewardScaleBps ?? 10000) / 10000} WIF earned this run <span className="fine dim">(paid from the reward pool when you save · daily cap 10 WIF)</span></div>}
+          {run.earned > 0 && <div className="earn">+{run.earned * (D.rewardScaleBps ?? 10000) / 10000} WIF earned this run <span className="fine dim">(paid from the reward pool when you save · daily cap 150 WIF)</span></div>}
           {bgSave && <p className="fine limet">{bgSave}</p>}
           <div className="row">
             {mode.kind === 'level' && run.cleared && mode.level < MAX_LEVEL && <button className="btn lime" onClick={nextLevel}>Next level ▶ <span className="fine">(saves L{mode.level})</span></button>}
@@ -882,7 +882,7 @@ function RunStart({ me, d, day, busy, act, approveIfNeeded, loadout, setLoadout,
             <div className="family"><span className="fine">Enemies: <b>{lv.family}</b></span>{lv.minions.map(([k, nm]: [string, string], j: number) => <span key={j} className="fam" title={nm}><Pix k={k} size={30} /></span>)}</div>
             <h3>Boss: {lv.boss.name} <span className="fine limet">· special: {lv.boss.move}</span></h3>
             <div className="fine">{lv.boss.blurb}</div>
-            <div className="fine">Boss HP {foeMax(lv.boss.hp)} · hits for ~{Math.round(lv.boss.atk * 1.5)} · reward <span className="limet">+{Math.min(40, 10 + 5 * sel)} WIF</span> + materials</div>
+            <div className="fine">Boss HP {foeMax(lv.boss.hp)} · hits for ~{Math.round(lv.boss.atk * 1.5)} · reward <span className="limet">+10 WIF</span> + materials</div>
             <div className="rec">Recommended: {REC[sel - 1]}</div>
             <div className="fine">Your kit: ⚔ {statsFor(q).atk} · 🛡 {statsFor(q).def} · ♥ {statsFor(q).hp} · {W.icon} {W.name}{W.ammo ? ` ×${arms.ammo}` : ''} · 2 free potions</div>
           </div>
@@ -1019,7 +1019,7 @@ function Board({ d, board, me, day, busy, act, reload, heroes }: any) {
         <div className="eyebrow">Rewards (what is real today)</div>
         <ul className="rewards">
           <li><b>Daily pool:</b> the top ranked score takes the whole pool ({fmt(d.pool)} WIF now) when the day is settled. Empty days roll over.</li>
-          <li><b>Play to earn:</b> +0.2 WIF per kill, +0.5 per boss, +1.5 to +4 per level clear. Paid from a small funded reward pool (not minted, pays out until it runs dry), max 10 WIF per wallet per day.</li>
+          <li><b>Play to earn:</b> +3 WIF per small enemy, +10 WIF per boss, and +10 WIF per level clear. Paid from a small funded reward pool (not minted, pays out until it runs dry), subject to the on-chain daily reward cap.</li>
           <li><b>PvP:</b> the winner takes 90% of the stake; 10% is burned.</li>
           <li><b>🎃 Pumpkin King:</b> drops his Crown costume and the Pumpkin Launcher.</li>
           <li><b>Free:</b> your first @name, and a small WIF welcome gift once per wallet while the pool lasts.</li>

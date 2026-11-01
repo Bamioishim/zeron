@@ -28,6 +28,8 @@ Vercel project serving zeron-game.vercel.app (root `app/`). Env var **names** (v
 - `BLOB_READ_WRITE_TOKEN` — Vercel Blob store for name/PIN records (PINs are stored hashed)
 
 ## Mainnet contracts (chain 4663, explorer robinhoodchain.blockscout.com)
+**Canonical project WIF token:** `0x5173b8eA6923c2d40267890D45C46a3480954773` — use this exact Robinhood Chain token for all production integrations; do not substitute another token merely because it is named WIF.
+
 | Contract | Address |
 |---|---|
 | Game | 0x7a9b811C490F4F089f63bC6001d801216846Fbd8 |
@@ -45,7 +47,7 @@ Example mainnet txs are listed in `README.md`.
 - 0.2 $wif fee per sponsored action: half burned, half to the gas sponsor.
 - First name claim is free. Names are unique ("@x is already taken").
 - Login = @name + 4-digit PIN (5 wrong tries → 15 min lock).
-- New players get 5 $wif; weapons 6–25 $wif; rewards capped at 10 $wif/day.
+- New players get 5 $wif; weapons 6–25 $wif; play-to-earn rewards are capped at 150 $wif/day on-chain.
 
 ## Done
 Mainnet deploy + end-to-end test with a zero-ETH wallet; name claim fix; PIN login; shop, wardrobe, bosses, mobile controls.
