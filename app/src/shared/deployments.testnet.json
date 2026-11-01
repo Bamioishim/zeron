@@ -1,0 +1,16 @@
+{
+  "network": "Testnet 46630",
+  "chainId": 46630,
+  "rpc": "https://rpc.testnet.chain.robinhood.com",
+  "explorer": "https://explorer.testnet.chain.robinhood.com",
+  "wif": "0x26f08a9b911b3c5074ae488036c1a235e85c3863",
+  "game": "0xf7C1a647b1A2AcDfA9c83f759dabfe8bc64c606a",
+  "names": "0xd080e895b7eC7eb9688BAdc85f002F4B15fd20f6",
+  "accountImpl": "0xc3589a6b6ce130052ebcf61b0a716db5122dee11",
+  "sponsor": "relay7702",
+  "burnVerified": false,
+  "quest": "0xc09fCeF3D094e74112eAA049F3746368e51f5A8A",
+  "questX": "0x904e388BbA0ce1DdE529e73E10d0f91d730A3e08",
+  "shop": "0x57F12f20bd3241C831cf04681c6c97409c24F8C4",
+  "armory": "0x8594ECDD0f48a95aDdbC2F1A4e81b4164ad77b6f"
+}

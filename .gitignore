@@ -1,0 +1,15 @@
+node_modules/
+dist/
+out/
+cache/
+broadcast/
+contracts/lib/
+.vercel/
+.env
+.env.*
+*.key
+*.pem
+secrets/
+shots/
+*.log
+.DS_Store
