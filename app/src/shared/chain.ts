@@ -1,5 +1,5 @@
 import { defineChain, parseAbi, encodeFunctionData } from 'viem'
-import deployments from './deployments.json' with { type: 'json' }
+import deployments from './deployments.json'
 
 export type Deployments = { chainId: number; rpc: string; explorer: string; wif: `0x${string}` | ''; game: `0x${string}` | '';
   names: `0x${string}` | ''; accountImpl: `0x${string}` | ''; quest: `0x${string}` | ''; shop?: `0x${string}`; armory?: `0x${string}`; sponsor: 'relay7702' | 'zerodev' | 'off'; network: string; burnVerified: boolean;

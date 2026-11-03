@@ -1,6 +1,6 @@
 // Real-time combat on a fixed 50 ms tick. Pure and deterministic: the browser runs it live,
 // the server replays the same input log (room, tick, move) to verify a clear.
-import { start, roomsFor, scoreOf, LEVEL_KIT, type Mode, type Move, type RunState, type ItemId, type Gear, NOGEAR } from './engine.js'
+import { start, roomsFor, scoreOf, LEVEL_KIT, type Mode, type Move, type RunState, type ItemId, type Gear, NOGEAR } from './engine'
 export const TICK = 50
 export const ROOM_TICKS = 2400 // 2 minutes per fight before the torch gutters
 /** real-time fights last longer than turn fights: enemies get more HP and hit harder */
