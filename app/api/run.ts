@@ -1,7 +1,7 @@
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' })
   try {
-    const { signRun } = await import('../src/server/core')
+    const { signRun } = await import('../src/server/core.ts')
     const raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? {})
     const body = JSON.parse(raw)
     res.status(200).json(await signRun(body))
