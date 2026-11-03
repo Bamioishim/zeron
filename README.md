@@ -28,6 +28,14 @@ Burns: real WIF burns are sent to 0x000000000000000000000000000000000000dEaD (co
 Economy (1/10 of testnet): starter gift 5 WIF (owner-settable, clamped to the pool), ranked entry 10, items 2.5/4/4, weapons 6–25, ammo 1.5, rename 5, rewards of 3 WIF per small enemy, 10 WIF per boss, and 10 WIF per level clear (max 150 WIF/day per wallet, paid only while the pool lasts).
 Gas: players need 0 ETH; each sponsored action costs 0.2 WIF (0.1 to 0xdEaD, 0.1 to the relayer). Sponsor limits: SPONSOR_DAILY_CAP=10 per wallet, auto-pause below SPONSOR_MIN_BALANCE_WEI=5e13, kill switch SPONSOR_PAUSED.
 
+## PIN login and recovery
+
+Zeron login uses `@name` plus a 4-digit PIN. During PIN setup, the player also chooses a recovery question and answer. The wallet private key is encrypted in the browser with the PIN and separately with the normalized recovery answer; the server stores only ciphertext, salts, and one-way verifiers in the private Vercel Blob vault. Answers and PINs are never sent to the server in plaintext.
+
+If a player forgets the PIN, the login screen provides **Forgot PIN?**. After the correct recovery answer, the player chooses a new PIN and the wallet is re-encrypted locally. Recovery attempts are rate-limited and locked temporarily after repeated failures. Accounts created before recovery questions were added must open Zeron on the already-unlocked wallet, use **Change PIN**, and save a question before recovery is available. The current `@bamio` vault record is one of these legacy records (`recovery: false`); it has not been changed remotely.
+
+Do not hardcode a PIN such as `0000` or add an administrative PIN bypass. Setting a PIN must be authorized by the wallet that owns the on-chain name, otherwise the encrypted wallet could be taken over.
+
 ## Mainnet migration transactions
 - Bridge (Relay, Solana→Robinhood): Solana sig 2T2wuqqenC1mYiYScvDgpX8vNXvxx8DN6hPy8ErCqzUcwghLeqfhgunvyLi75LYNojHaZ5sZNSfgNpdtUSFtdwYM → [0x04581af3…c093](https://robinhoodchain.blockscout.com/tx/0x04581af3c77d09b80725720bb1195ee23ab8784a5d8f6be05945eedbf826c093) (0.001396987 ETH landed)
 - Swap 0.00022 ETH → 406.36 WIF (KyberSwap): [0x04c062df…4e9d](https://robinhoodchain.blockscout.com/tx/0x04c062dfdc1dc358ed76556d094fcf6bd8098735efe37eba3cbd3b0831434e9d)

@@ -6,7 +6,7 @@ Live: https://zeron-game.vercel.app
 
 ## Stack
 - `app/` — React 19 + Vite + TypeScript, viem. Game runs in the browser; each player gets a local key (`app/src/wallet.ts`).
-- `app/api/` — Vercel serverless functions: `relay.ts` (sponsored meta-tx relayer / paymaster), `run.ts` (signs run results), `vault.ts` (name + 4-digit PIN login store). Logic in `app/src/server/`.
+- `app/api/` — Vercel serverless functions: `relay.ts` (sponsored meta-tx relayer / paymaster), `run.js` (bundled run signer), `vault.js` (bundled PIN/recovery vault). TypeScript source logic is in `app/src/server/`; the generated API bundles are committed because Vercel's Node ESM resolver cannot reliably load the extensionless TypeScript dependency graph.
 - `contracts/` — Foundry (solc 0.8.28, via_ir). Run `forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts` to restore `lib/`.
 - `brand/`, `deploy-assets/` — art and assets.
 
@@ -25,7 +25,7 @@ Vercel project serving zeron-game.vercel.app (root `app/`). Env var **names** (v
 - `RPC_URL` — Robinhood Chain mainnet RPC
 - `SPONSOR_DAILY_CAP`, `SPONSOR_MIN_BALANCE_WEI`, `SPONSOR_PAUSED` — sponsor safety limits (auto-pauses when ETH is low)
 - `DEPLOYMENTS_OVERRIDE` — optional JSON of contract addresses
-- `BLOB_READ_WRITE_TOKEN` — Vercel Blob store for name/PIN records (PINs are stored hashed)
+- `BLOB_READ_WRITE_TOKEN` — Vercel Blob store for name/PIN/recovery records (PINs and recovery answers are stored only as one-way verifiers; wallet ciphertext is encrypted client-side)
 
 ## Mainnet contracts (chain 4663, explorer robinhoodchain.blockscout.com)
 **Canonical project WIF token:** `0x5173b8eA6923c2d40267890D45C46a3480954773` — use this exact Robinhood Chain token for all production integrations; do not substitute another token merely because it is named WIF.
@@ -47,10 +47,12 @@ Example mainnet txs are listed in `README.md`.
 - 0.2 $wif fee per sponsored action: half burned, half to the gas sponsor.
 - First name claim is free. Names are unique ("@x is already taken").
 - Login = @name + 4-digit PIN (5 wrong tries → 15 min lock).
+- New PIN setup also requires a recovery question and answer. **Forgot PIN?** derives a recovery key in the browser, decrypts the wallet ciphertext locally, and re-encrypts it under the new PIN. The recovery answer is never sent in plaintext.
+- Legacy vault records created before recovery support have no recovery fields. The owner must unlock the original wallet and use **Change PIN** once to add the question. `@bamio` was checked on 4 Nov 2026 and is currently legacy (`question: null`, `recovery: false`). Do not hardcode `0000` or bypass wallet ownership; that would be an account-takeover vulnerability.
 - New players get 5 $wif; weapons 6–25 $wif; play-to-earn rewards are capped at 150 $wif/day on-chain.
 
 ## Done
-Mainnet deploy + end-to-end test with a zero-ETH wallet; name claim fix; PIN login; shop, wardrobe, bosses, mobile controls.
+Mainnet deploy + end-to-end test with a zero-ETH wallet; name claim fix; PIN login; recovery-question reset; shop, wardrobe, bosses, mobile controls.
 
 ## Next
 1. Demo video — focus on $wif moving onchain (claim, buy, gas-in-$wif, burn).
