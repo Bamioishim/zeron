@@ -1,9 +1,9 @@
 // Server logic shared by the Vercel functions and the local e2e test.
 import { parseEventLogs, createPublicClient, createWalletClient, http, decodeFunctionData, encodeFunctionData, keccak256, toHex, getAddress, hashTypedData, recoverAddress, encodeAbiParameters, isAddress, type Hex } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { D, chain, gameAbi, wifAbi, namesAbi, accountAbi, questAbi, questXAbi, shopAbi, armoryAbi, RUN_TYPES, CLEAR_TYPES, DUEL_TYPES, BATCH_TYPES, type Call } from '../shared/chain'
-import { rtReplay, type Ev } from '../shared/rt'
-import { replay, lootFor, MAX_LEVEL, ONCHAIN_MAX_LEVEL, LEVEL_KIT, type ItemId, type Move, type Gear } from '../shared/engine'
+import { D, chain, gameAbi, wifAbi, namesAbi, accountAbi, questAbi, questXAbi, shopAbi, armoryAbi, RUN_TYPES, CLEAR_TYPES, DUEL_TYPES, BATCH_TYPES, type Call } from '../shared/chain.ts'
+import { rtReplay, type Ev } from '../shared/rt.ts'
+import { replay, lootFor, MAX_LEVEL, ONCHAIN_MAX_LEVEL, LEVEL_KIT, type ItemId, type Move, type Gear } from '../shared/engine.ts'
 
 const rpc = () => process.env.RPC_URL || D.rpc
 export const pub = () => createPublicClient({ chain, transport: http(rpc()) })
