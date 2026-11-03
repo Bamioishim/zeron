@@ -8,7 +8,7 @@ import { setCostume } from './game/art'
 import { totalBurned, homeStats, recentBurns, wardrobeOf, shopPrices, burnedIn, arsenalOf, type BurnRow } from './onchain'
 import { ITEMS, scoreOf, dayNow, roomsFor, LEVELS, MAX_LEVEL, ONCHAIN_MAX_LEVEL, LEVEL_KIT, RECIPES, lootFor, statsFor, type ItemId, type Move, type Mode, type EnemyDef } from './shared/engine'
 import { account, pub, sponsored, postRun, getKey } from './wallet'
-import { hasPin, setPin, loginPin, pinRe } from './pin'
+import { hasPin, setPin, loginPin, resetPin, pinRe, RECOVERY_QUESTIONS } from './pin'
 import { Sprite } from './sprites'
 import World, { type WorldApi } from './game/World'
 import { townMap, dungeonMap, type Npc, type MapDef } from './game/maps'
@@ -81,11 +81,13 @@ const pinHint = (pin: string, pin2: string) => !pin ? 'Pick a 4-digit PIN. You l
 /** log in on this device with @name + PIN */
 function PinLogin({ onBack, backLabel }: { onBack?: () => void; backLabel?: string }) {
   const [name, setName] = useState(''), [pin, setP] = useState(''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+  const [resetMode, setResetMode] = useState(false)
   const ok = nameRe.test(name) && pinRe.test(pin) && !busy
   const go = async (e?: any) => {
     e?.preventDefault?.(); if (!ok) return; setBusy(true); setErr('')
     try { await loginPin(name, pin); location.reload() } catch (x: any) { setErr(String(x?.message || x)); setBusy(false) }
   }
+  if (resetMode) return <PinReset name={name} onBack={() => setResetMode(false)} />
   return (
     <form className="namepick" onSubmit={go} onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
       <div className="eyebrow">Log in</div>
@@ -94,19 +96,28 @@ function PinLogin({ onBack, backLabel }: { onBack?: () => void; backLabel?: stri
       <PinFields pin={pin} setPin={setP} />
       {err && <div className="fine namehint bad">{err}</div>}
       <button type="submit" className="btn lime" disabled={!ok}>{busy ? 'Checking PIN…' : 'Log in'}</button>
+      <button type="button" className="linkbtn" onClick={() => setResetMode(true)} disabled={!nameRe.test(name)}>Forgot PIN? Reset with your recovery question</button>
       {onBack && <button type="button" className="linkbtn" onClick={onBack}>{backLabel || 'New here? Pick a name'}</button>}
     </form>
   )
 }
+function PinReset({ name, onBack }: { name: string; onBack: () => void }) {
+  const [question, setQuestion] = useState<string | null>(null), [answer, setAnswer] = useState(''), [pin, setPinValue] = useState(''), [pin2, setPin2] = useState(''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+  useEffect(() => { if (nameRe.test(name)) fetch('/api/vault', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'salt', name }) }).then(r => r.json()).then(x => setQuestion(x.question || null)).catch(() => {}) }, [name])
+  const go = async () => { if (!pinRe.test(pin) || pin !== pin2 || answer.trim().length < 2) return; setBusy(true); setErr(''); try { await resetPin(name, answer, pin); location.reload() } catch (e: any) { setErr(String(e?.message || e)); setBusy(false) } }
+  return <div className="namepick" onClick={e => e.stopPropagation()}><div className="eyebrow">Reset PIN</div>{!question ? <p className="fine">No recovery question is configured for @{name}. Use a device where this account is unlocked to set one.</p> : <><p className="fine">Answer the recovery question you chose for @{name}.</p><div className="fine"><strong>{question}</strong></div><input value={answer} onChange={e => setAnswer(e.target.value)} placeholder="Your answer" autoComplete="off" /><PinFields pin={pin} setPin={setPinValue} pin2={pin2} setPin2={setPin2} onEnter={go} />{err && <div className="fine namehint bad">{err}</div>}<button type="button" className="btn lime" disabled={busy || !pinRe.test(pin) || pin !== pin2 || answer.trim().length < 2} onClick={go}>{busy ? 'Resetting…' : 'Reset PIN'}</button></>}<button type="button" className="linkbtn" onClick={onBack}>Back to login</button></div>
+}
 /** set (or reset) the PIN for an @name this wallet already owns */
 function SetPin({ name, onDone, onSkip, title }: { name: string; onDone: () => void; onSkip?: () => void; title?: string }) {
-  const [pin, setP] = useState(''), [pin2, setP2] = useState(''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
-  const ok = pinRe.test(pin) && pin === pin2 && !busy
-  const go = async () => { if (!ok) return; setBusy(true); setErr(''); try { await setPin(name, pin); onDone() } catch (x: any) { setErr(String(x?.message || x)); setBusy(false) } }
+  const [pin, setP] = useState(''), [pin2, setP2] = useState(''), [question, setQuestion] = useState(RECOVERY_QUESTIONS[0]), [answer, setAnswer] = useState(''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+  const ok = pinRe.test(pin) && pin === pin2 && answer.trim().length >= 2 && !busy
+  const go = async () => { if (!ok) return; setBusy(true); setErr(''); try { await setPin(name, pin, question, answer); onDone() } catch (x: any) { setErr(String(x?.message || x)); setBusy(false) } }
   return (
     <div className="namepick" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
       <div className="eyebrow">{title || 'Set a PIN'}</div>
       <p className="fine">Protect @{name} with a 4-digit PIN. Then you can log in with @{name} + PIN on any phone or computer.</p>
+      <select value={question} onChange={e => setQuestion(e.target.value)} aria-label="Recovery question">{RECOVERY_QUESTIONS.map(q => <option key={q}>{q}</option>)}</select>
+      <input value={answer} onChange={e => setAnswer(e.target.value)} placeholder="Recovery answer" autoComplete="off" />
       <PinFields pin={pin} setPin={setP} pin2={pin2} setPin2={setP2} onEnter={go} />
       <div className={'fine namehint ' + (ok ? 'good' : pin2.length === 4 && pin !== pin2 ? 'bad' : '')}>{pinHint(pin, pin2)}</div>
       {err && <div className="fine namehint bad">{err}</div>}
@@ -118,7 +129,7 @@ function SetPin({ name, onDone, onSkip, title }: { name: string; onDone: () => v
 /** onboarding / rename: pick an @name with a live availability check, then a PIN */
 function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: any) {
   const [name, setName] = useState('')
-  const [pin, setP] = useState(''), [pin2, setP2] = useState('')
+  const [pin, setP] = useState(''), [pin2, setP2] = useState(''), [question, setQuestion] = useState(RECOVERY_QUESTIONS[0]), [answer, setAnswer] = useState('')
   const [login, setLogin] = useState(false)
   const [done, setDone] = useState<{ name: string; link: string; pinErr?: string } | null>(null)
   const [err, setErr] = useState('')
@@ -127,7 +138,7 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: 
   const fee: bigint = me.name ? (d.nameFee ?? 0n) : 0n
   const isTaken = taken.includes(name) || (L.n === name && !L.loading && !!L.owner && L.owner !== ZERO)
   const free = nameRe.test(name) && !L.loading && L.n === name && L.owner === ZERO && !taken.includes(name)
-  const pinOk = pinRe.test(pin) && pin === pin2
+  const pinOk = pinRe.test(pin) && pin === pin2 && answer.trim().length >= 2
   const ok = free && pinOk
   const hint = !name ? '3–15 characters: a–z, 0–9, _' : !nameRe.test(name) ? (name.length < 3 ? 'At least 3 characters.' : 'Only a–z, 0–9 and _ (max 15).') : isTaken ? `@${name} is already taken — try another` : L.loading || L.n !== name ? 'Checking…' : L.owner === undefined ? "Couldn't check right now." : `✓ @${name} is free`
   if (login) return <PinLogin onBack={() => setLogin(false)} />
@@ -145,7 +156,7 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: 
     }
     if (!r) return
     let pinErr = ''
-    try { await setPin(n, p) } catch (x: any) { pinErr = String(x?.message || x) }
+    try { await setPin(n, p, question, answer) } catch (x: any) { pinErr = String(x?.message || x) }
     setDone({ name: n, link: r.explorer, pinErr })
   }
   if (done) return done.pinErr
@@ -167,6 +178,8 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: 
       <div className="at-input"><span>@</span><input autoFocus placeholder="yourname" value={name} autoCapitalize="none" autoCorrect="off" onChange={(e) => { setErr(''); setName(e.target.value.toLowerCase().replace(/\s/g, '')) }} maxLength={15} aria-label="@name" /></div>
       <div className={'fine namehint ' + (free ? 'good' : name && (isTaken || (!L.loading && L.n === name)) ? 'bad' : '')}>{hint}</div>
       {free && <>
+        <select value={question} onChange={e => setQuestion(e.target.value)} aria-label="Recovery question">{RECOVERY_QUESTIONS.map(q => <option key={q}>{q}</option>)}</select>
+        <input value={answer} onChange={e => setAnswer(e.target.value)} placeholder="Recovery answer" autoComplete="off" />
         <PinFields pin={pin} setPin={setP} pin2={pin2} setPin2={setP2} onEnter={claim} />
         <div className={'fine namehint ' + (pinOk ? 'good' : pin2.length === 4 && pin !== pin2 ? 'bad' : '')}>{pinHint(pin, pin2)}</div>
       </>}

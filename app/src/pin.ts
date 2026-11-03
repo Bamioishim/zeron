@@ -9,9 +9,9 @@ import { getKey, setKey } from './wallet'
 
 export const pinRe = /^\d{4}$/
 const SCRYPT = { N: 2 ** 15, r: 8, p: 1, dkLen: 64 }
-async function derive(name: string, pin: string, saltHex: string) {
-  const salt = new Uint8Array([...new TextEncoder().encode(`zeron-pin-v1:${name}:`), ...(hexToBytes(saltHex as Hex) as any)])
-  const out = await scryptAsync(new TextEncoder().encode(pin), salt, SCRYPT)
+async function derive(name: string, secret: string, saltHex: string, kind = 'pin') {
+  const salt = new Uint8Array([...new TextEncoder().encode(`zeron-${kind}-v1:${name}:`), ...(hexToBytes(saltHex as Hex) as any)])
+  const out = await scryptAsync(new TextEncoder().encode(secret), salt, SCRYPT)
   const aes = await crypto.subtle.importKey("raw", out.slice(0, 32) as any, 'AES-GCM', false, ['encrypt', 'decrypt'])
   return { aes, auth: out.slice(32) }
 }
@@ -23,14 +23,23 @@ async function api(body: any) {
   return j
 }
 export const hasPin = async (name: string) => !!(await api({ op: 'salt', name })).exists
-export async function setPin(name: string, pin: string) {
+export const RECOVERY_QUESTIONS = ['What is your best color?', "What was your first pet's name?", 'What city were you born in?']
+const answer = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
+async function encryptedKey(name: string, secret: string, salt: string, kind: string) {
+  const { aes, auth } = await derive(name, secret, salt, kind)
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const ct = bytesToHex(new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(`${name}|${privateKeyToAccount(getKey()).address}`) }, aes, (hexToBytes(getKey()) as any))))
+  return { salt, verifier: toHex(sha256(auth)), iv: bytesToHex(iv), ct }
+}
+export async function setPin(name: string, pin: string, question: string, recoveryAnswer: string) {
   if (!pinRe.test(pin)) throw new Error('PIN must be 4 digits.')
+  if (!RECOVERY_QUESTIONS.includes(question) || answer(recoveryAnswer).length < 2) throw new Error('Choose a recovery question and enter an answer.')
   const acct = privateKeyToAccount(getKey())
   const salt = bytesToHex(crypto.getRandomValues(new Uint8Array(16)))
-  const { aes, auth } = await derive(name, pin, salt)
-  const iv = crypto.getRandomValues(new Uint8Array(12))
-  const ct = bytesToHex(new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(`${name}|${acct.address}`) }, aes, (hexToBytes(getKey()) as any))))
-  const b = { salt, verifier: toHex(sha256(auth)), iv: bytesToHex(iv), ct }
+  const pinBox = await encryptedKey(name, pin, salt, 'pin')
+  const rsalt = bytesToHex(crypto.getRandomValues(new Uint8Array(16)))
+  const recoveryBox = await encryptedKey(name, answer(recoveryAnswer), rsalt, 'recovery')
+  const b = { ...pinBox, question, rsalt, rverifier: recoveryBox.verifier, riv: recoveryBox.iv, rct: recoveryBox.ct }
   const ts = Date.now()
   const sig = await acct.signMessage({ message: vaultMessage(name, acct.address, vaultDigest(b), ts) })
   await api({ op: 'set', name, addr: acct.address, ...b, ts, sig })
@@ -46,5 +55,21 @@ export async function loginPin(name: string, pin: string) {
   if (!pk) throw new Error("PIN was right but the saved login couldn't be opened. Set your PIN again on your old device.")
   const key = bytesToHex(new Uint8Array(pk))
   if (privateKeyToAccount(key).address.toLowerCase() !== String(r.addr).toLowerCase()) throw new Error("Saved login didn't match @" + name + '.')
+  setKey(key); return r.addr as string
+}
+export async function resetPin(name: string, recoveryAnswer: string, newPin: string) {
+  if (!pinRe.test(newPin)) throw new Error('PIN must be 4 digits.')
+  const s = await api({ op: 'salt', name })
+  if (!s.recovery || !s.rsalt) throw new Error('This account has no recovery question yet.')
+  const { aes, auth } = await derive(name, answer(recoveryAnswer), s.rsalt, 'recovery')
+  const r = await api({ op: 'recover', name, auth: bytesToHex(auth) })
+  const pk = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: hexToBytes(r.riv as Hex) as any, additionalData: new TextEncoder().encode(`${name}|${r.addr}`) }, aes, hexToBytes(r.rct as Hex) as any).catch(() => null)
+  if (!pk) throw new Error("That answer couldn't unlock the account.")
+  const key = bytesToHex(new Uint8Array(pk)); if (privateKeyToAccount(key).address.toLowerCase() !== String(r.addr).toLowerCase()) throw new Error('Recovered wallet did not match this name.')
+  const salt = bytesToHex(crypto.getRandomValues(new Uint8Array(16)))
+  const { aes: naes, auth: nauth } = await derive(name, newPin, salt, 'pin')
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const ct = bytesToHex(new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(`${name}|${r.addr}`) }, naes, hexToBytes(key) as any)))
+  await api({ op: 'reset', name, auth: bytesToHex(auth), addr: r.addr, salt, verifier: toHex(sha256(nauth)), iv: bytesToHex(iv), ct })
   setKey(key); return r.addr as string
 }
