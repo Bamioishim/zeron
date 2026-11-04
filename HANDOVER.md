@@ -6,7 +6,7 @@ Live: https://zeron-game.vercel.app
 
 ## Stack
 - `app/` — React 19 + Vite + TypeScript, viem. Game runs in the browser; each player gets a local key (`app/src/wallet.ts`).
-- `app/api/` — Vercel serverless functions: `relay.ts` (sponsored meta-tx relayer / paymaster), `run.js` (bundled run signer), `vault.js` (bundled PIN/recovery vault). TypeScript source logic is in `app/src/server/`; the generated API bundles are committed because Vercel's Node ESM resolver cannot reliably load the extensionless TypeScript dependency graph.
+- `app/api/` — Vercel serverless functions: `relay.js` (bundled sponsored meta-tx relayer / paymaster), `run.js` (bundled run signer), `vault.js` (bundled PIN/recovery vault). TypeScript source logic is in `app/src/server/`; the generated API bundles are committed because Vercel's Node ESM resolver cannot reliably load the extensionless TypeScript dependency graph.
 - `contracts/` — Foundry (solc 0.8.28, via_ir). Run `forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts` to restore `lib/`.
 - `brand/`, `deploy-assets/` — art and assets.
 
