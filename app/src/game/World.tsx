@@ -154,7 +154,11 @@ export default function World({ map, defeated, locked, paused, onInteract, onTou
         if (ch === 'n') { drawCandle(g, X, Y, now); lights.push([(X / TS) - ox + 0.5, (Y / TS) - oy + 0.2, 2.3]) }
       }
       const actors: { key: string; x: number; y: number; moving: boolean; scale?: number; boss?: boolean; stall?: Npc }[] = []
-      for (const n of map.npcs) { actors.push({ key: n.sprite, x: n.x, y: n.y, moving: false })
+      if (town) {
+        const gate = map.npcs.find((n) => n.kind === 'gate')
+        if (gate) drawCastle(g, Math.round((gate.x + ox) * TS), Math.round((gate.y + oy) * TS), now)
+      }
+      for (const n of map.npcs) { if (town && n.kind === 'gate') continue; actors.push({ key: n.sprite, x: n.x, y: n.y, moving: false })
         if (n.stall) { drawStallBack(g, Math.round((n.x + ox) * TS), Math.round((n.y + oy) * TS), n.stall, now); actors.push({ key: '', x: n.x, y: n.y + 0.6, moving: false, stall: n }) } }
       for (const f of s.foes) if (alive(f.idx)) actors.push({ key: f.sprite, x: f.fx + (f.x - f.fx) * f.t, y: f.fy + (f.y - f.fy) * f.t, moving: f.t < 1, boss: f.boss })
       actors.push({ key: 'hero', x: px, y: py, moving: s.t < 1 || !!held.current })
@@ -196,7 +200,7 @@ export default function World({ map, defeated, locked, paused, onInteract, onTou
       }
       if (s.near && !props_.current.paused) {
         const X = Math.round((s.near.x + ox) * TS + TS / 2), Y = Math.round((s.near.y + oy) * TS) - 14
-        g.font = '8px Silkscreen, monospace'; const label = 'E · ' + s.near.label; const w = g.measureText(label).width + 6
+        g.font = '8px Silkscreen, monospace'; const label = s.near.kind === 'gate' ? 'E · ENTER' : 'E · ' + s.near.label; const w = g.measureText(label).width + 6
         g.fillStyle = '#d4fc50'; g.fillRect(Math.round(X - w / 2), Y - 9, Math.round(w), 11); g.fillStyle = '#0d0d0d'; g.fillText(label, Math.round(X - w / 2 + 3), Y - 1)
       }
     }
@@ -263,6 +267,25 @@ function drawNiche(g: G, X: number, Y: number) { R(g, '#120f16', X + 4, Y + 4, 8
 function drawDoor(g: G, X: number, Y: number) {
   R(g, '#2a2420', X + 2, Y + 2, 12, 14); R(g, '#3a2414', X + 3, Y + 4, 10, 12); R(g, '#3a2414', X + 4, Y + 3, 8, 1)
   R(g, '#5a3a22', X + 4, Y + 5, 3, 11); R(g, '#5a3a22', X + 9, Y + 5, 3, 11); R(g, '#c89a3a', X + 10, Y + 10, 1, 1); R(g, '#8f8068', X + 2, Y + 1, 12, 1)
+}
+
+function drawCastle(g: G, X: number, Y: number, now: number) {
+  const L = X - TS, Wd = TS * 3
+  R(g, 'rgba(0,0,0,.45)', L + 2, Y + TS - 1, Wd - 4, 4)
+  R(g, '#35313d', L + 3, Y - TS * 2 + 4, Wd - 6, TS * 3)
+  R(g, '#585263', L + 4, Y - TS * 2 + 5, Wd - 8, 2)
+  R(g, '#27242e', L + 8, Y - TS + 1, Wd - 16, TS * 2 - 1)
+  R(g, '#15131a', X + 2, Y - TS + 7, TS - 4, TS + 9)
+  R(g, '#9a94a2', X + 4, Y - TS + 7, 2, TS + 8); R(g, '#9a94a2', X + TS - 6, Y - TS + 7, 2, TS + 8)
+  for (const tx of [L + 3, L + Wd - 8]) {
+    R(g, '#494452', tx, Y - TS * 2 - 2, 5, TS + 5); R(g, '#6e6878', tx + 1, Y - TS * 2 - 3, 3, 2)
+    R(g, '#494452', tx + 1, Y - TS * 2 - 6, 3, 4)
+  }
+  R(g, '#d4fc50', X + 5, Y - TS * 2 + 8, 6, 2); R(g, '#d4fc50', X + 7, Y - TS * 2 + 6, 2, 6)
+  g.font = '7px Silkscreen, monospace'; const label = 'ENTER', w = g.measureText(label).width + 8
+  const bob = Math.sin(now / 260) * 2, sx = Math.round(X + TS / 2 - w / 2), sy = Math.round(Y - TS * 2 - 16 + bob)
+  R(g, '#d4fc50', sx, sy, w, 10); R(g, '#0d0d0d', sx - 1, sy + 2, 1, 6); R(g, '#0d0d0d', sx + w, sy + 2, 1, 6)
+  g.fillStyle = '#0d0d0d'; g.fillText(label, sx + 4, sy + 7)
 }
 
 // ---- market town (original pixel art drawn in code, matching the 16x16 dungeon style) ----
