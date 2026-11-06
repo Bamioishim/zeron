@@ -105,6 +105,8 @@ The canonical token and contract addresses also appear in `app/src/shared/deploy
 - PvP stake resolution sends 10% of the stake to the dead address.
 - The deployed FeeSinks use `useBurn=false`. This is dead-address destruction, **not** a native token `burn()` call and not a reduction of WIF total supply.
 - Armory rewards come from a prefunded pool. The on-chain daily cap is 10 WIF per wallet, and the mainnet reward scale is 10%.
+- Weapon/ammo fees do not fund the Armory reward pool (0% fee routing). The team reviews the pool every Monday and manually tops it toward a 30-day target when below that target, based on the trailing-seven-day average payout.
+- Check the live [Armory WIF balance on Blockscout](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7?tab=tokens) before communicating reward availability. Do not publish an undated balance or a runway estimate.
 - Auto-Hunt is not offered on mainnet: Armory item ID 8 has no configured sale price.
 
 See [docs/TOKENOMICS.md](docs/TOKENOMICS.md) for per-function details and read-only verification commands.
