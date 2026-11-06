@@ -16,6 +16,8 @@ This document is the operational guide for maintaining the live Zeron deployment
 
 The Vercel project is connected to this GitHub repository. Non-production branches are preview releases; pushes to `main` are production releases. Always verify the target branch and deployment state before treating a URL as production.
 
+Vercel SSO protection is enabled for **preview deployments only**. Production domains are public so players can access the game. Do not change this to `all_except_custom_domains` unless production access is intentionally being gated.
+
 The legacy hostname `zeron-game.vercel.app` is still assigned to a separate older Vercel project/deployment. It was not reassigned during this release. Do not move that alias unless the owner explicitly requests the routing change.
 
 ## Repository layout
