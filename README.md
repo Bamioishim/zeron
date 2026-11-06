@@ -114,6 +114,8 @@ npm run dev
 
 Vite serves the app locally (normally at http://localhost:5173).
 
+The production build runs Oxlint, the TypeScript project check, and the Vite production build in sequence.
+
 Useful app scripts:
 
 ```bash
