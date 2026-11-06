@@ -38,7 +38,7 @@ npm run build
 npm run lint
 ```
 
-The production build runs Oxlint, the TypeScript project check, and the Vite build in sequence; the explicit lint command is useful when iterating on lint fixes.
+The production build runs Oxlint in error-only mode, the TypeScript project check, and the Vite build in sequence; the explicit `npm run lint` command also displays non-blocking warnings.
 
 Contracts:
 
