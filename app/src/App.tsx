@@ -44,7 +44,9 @@ export function friendly(e: any): string {
     [/registered|fighter/i, 'Register in the arena first (clear level 1).'],
     [/pending|challenge/i, 'You already have a duel in progress. Wait a moment.'],
     [/daily limit|sponsored|quota/i, "You've hit today's free-gas limit. Come back tomorrow."],
-    [/relayer key.*not set|relayer.*private key/i, "Account creation is temporarily unavailable: Zeron's server-side relayer signer is not configured. No transaction was sent. Please contact the team."],
+    [/RELAYER_KEY not set|relayer key.*not set|relayer.*private key/i, "Sponsored actions are unavailable because the server relayer key is missing. No transaction was sent."],
+    [/RUN_SIGNER_KEY not set/i, "Reward signing is not configured on Zeron's server. No reward transaction was sent."],
+    [/BLOB_READ_WRITE_TOKEN|persistent PIN storage/i, "PIN storage is not configured. Your PIN was not saved. Contact the Zeron team."],
     [/fetch|network|timeout/i, "Can't reach the network right now. Try again."],
   ]
   for (const [re, m] of MAP) if (re.test(r)) return m
@@ -320,7 +322,7 @@ function MenuPanel({ view, onClose, stats, me, d, busy, act, approveIfNeeded, se
 
 /** title screen: slowly panning, torch-lit dungeon behind the logo and a central play panel */
 /** title screen: logo, Halloween banner, one CTA and wallet status */
-function Opening({ onEnter, onMenuView, me, name }: { onEnter: (t?: Tab) => void; onMenuView: (view: MenuView) => void; me: string; name?: string }) {
+function Opening({ onEnter, onMenuView, me }: { onEnter: (t?: Tab) => void; onMenuView: (view: MenuView) => void; me: string }) {
   const map = useMemo(() => dungeonMap(dayNow() % 97 + 3, roomsFor({ kind: 'level', level: 2 } as any).map((r) => r.key)), [])
   const api = useRef<WorldApi | null>(null)
   useEffect(() => {
@@ -520,7 +522,7 @@ export default function App() {
     if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { const i = TABS.indexOf(tab) + (dx < 0 ? 1 : -1); if (i >= 0 && i < TABS.length) setTab(TABS[i]) }
   }
 
-  if (!opened) return <><Opening me={me} name={m.name} onMenuView={setMenuView} onEnter={(t) => { audio.unlock(); setTab(t || 'world'); setOpened(true); if (needName || (deployed && m.name === undefined)) setNamePrompt('Pick your @name') }} />{menuView && <MenuPanel view={menuView} onClose={() => setMenuView(null)} stats={stats} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}</>
+  if (!opened) return <><Opening me={me} onMenuView={setMenuView} onEnter={(t) => { audio.unlock(); setTab(t || 'world'); setOpened(true); if (needName || (deployed && m.name === undefined)) setNamePrompt('Pick your @name') }} />{menuView && <MenuPanel view={menuView} onClose={() => setMenuView(null)} stats={stats} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}</>
   return (
     <div className="shell" onTouchStart={onTS} onTouchEnd={onTE}>
       <header className="top">
