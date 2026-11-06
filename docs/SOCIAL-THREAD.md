@@ -28,13 +28,13 @@ Eligible play rewards are paid from a prefunded Armory pool, with a 10 WIF per-w
 
 A standard sponsored on-chain batch costs 0.2 WIF: 0.1 goes to the dead address and 0.1 reimburses the relayer covering network gas.
 
-One important distinction: 80% of ranked-entry and daily-item fees remain in the Game contract's daily prize pool. Armory play rewards are paid from a separate prefunded pool. Those pools do not automatically replenish each other, so Zeron's current deployment is not yet a closed, self-replenishing reward flywheel.
+Here's the ranked loop: 80% of ranked-entry and daily-item fees flow into that day's on-chain prize pool. After the day ends, anyone can settle it and the top ranked player receives the pool. Players return for the next contest, generating new entry and item fees. The contract records entries, pool contributions and payouts on-chain. Armory kill/level rewards are separate and come from a finite prefunded balance.
 
 **4/4**
 
 Built for the World is Flat hackathon, using the real @WIFonRH token on Robinhood Chain (4663).
 
-The current public demo includes local practice-mode combat footage. That footage is not proof of on-chain gameplay or player retention, and we are not publishing unverified activity numbers.
+The live homepage reads named wallets, 7-day returning players, recorded runs, prize-pool inflows and payouts, plus the separate Armory reward balance and estimated runway directly from mainnet events. The older combat video still contains practice footage, so it is not presented as on-chain gameplay proof.
 
 Play: https://zeron-game-sigma.vercel.app/
 
