@@ -24,7 +24,7 @@ run rewards are scaled onchain and paid from the armory pool, subject to its cur
 3/4
 the gas fee is 0.2 WIF per sponsored onchain batch, not per movement or click: 0.1 goes to the dead address and 0.1 to the relayer covering ETH gas.
 other fee splits differ: game/quest send 20% to the dead address; names/shop/armory send 50%; the PvP stake path sends 10%.
-important detail: deployed FeeSinks have useBurn=false. what the app calls “burning” is a dead-address transfer today—not a verified native burn() or proof that totalSupply falls.
+important detail: deployed FeeSinks have useBurn=false. The old interface called this “burning”; the current UI correctly labels it destruction via a dead-address transfer—not a native burn() or proof that totalSupply falls.
 
 4/4
 built for the world is flat hackathon, using the real @WIFonRH token on robinhood chain (4663).
