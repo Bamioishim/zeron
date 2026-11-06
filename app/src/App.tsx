@@ -44,6 +44,7 @@ export function friendly(e: any): string {
     [/registered|fighter/i, 'Register in the arena first (clear level 1).'],
     [/pending|challenge/i, 'You already have a duel in progress. Wait a moment.'],
     [/daily limit|sponsored|quota/i, "You've hit today's free-gas limit. Come back tomorrow."],
+    [/relayer key.*not set|relayer.*private key/i, "Account creation is temporarily unavailable: Zeron's server-side relayer signer is not configured. No transaction was sent. Please contact the team."],
     [/fetch|network|timeout/i, "Can't reach the network right now. Try again."],
   ]
   for (const [re, m] of MAP) if (re.test(r)) return m
