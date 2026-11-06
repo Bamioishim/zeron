@@ -18405,7 +18405,7 @@ var QUESTIONS = ["What is your best color?", "What was your first pet's name?", 
 var path = (n2) => `vault/${n2}.json`;
 var err = (status, msg, extra = {}) => Object.assign(new Error(msg), { status, extra });
 var mem = /* @__PURE__ */ new Map();
-var useMem = () => !process.env.BLOB_READ_WRITE_TOKEN;
+var useMem = () => process.env.NODE_ENV !== "production" && !process.env.BLOB_READ_WRITE_TOKEN;
 async function load(n2) {
   if (useMem()) {
     const s = mem.get(path(n2));
