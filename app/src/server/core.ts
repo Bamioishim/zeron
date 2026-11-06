@@ -159,6 +159,8 @@ export async function relay(body: { from: string; calls: { to: string; value: st
   const calls: Call[] = body.calls.map((c) => ({ to: getAddress(c.to), value: BigInt(c.value), data: c.data as Hex }))
   if (calls.length < 1 || calls.length > 8) throw new Error('1-8 calls')
   calls.forEach(checkCall)
+  const startsDuel = calls.some((c) => getAddress(c.to) === getAddress(D.quest as Hex) && decodeFunctionData({ abi: questAbi, data: c.data }).functionName === 'challenge')
+  if (startsDuel && !process.env.RUN_SIGNER_KEY?.trim()) throw new Error('RUN_SIGNER_KEY not set; arena duel resolution is unavailable. No transaction was sent.')
   await checkGasFee(calls, from)
   const p = pub()
   const code = await p.getCode({ address: from })

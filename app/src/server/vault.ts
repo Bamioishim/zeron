@@ -18,7 +18,7 @@ const err = (status: number, msg: string, extra: any = {}) => Object.assign(new 
 
 // tiny in-memory store for local tests (no BLOB token)
 const mem = new Map<string, string>()
-const usesMemoryStore = () => !process.env.BLOB_READ_WRITE_TOKEN
+const usesMemoryStore = () => process.env.NODE_ENV !== 'production' && !process.env.BLOB_READ_WRITE_TOKEN
 async function load(n: string): Promise<Rec | null> {
   if (usesMemoryStore()) { const s = mem.get(path(n)); return s ? JSON.parse(s) : null }
   const r = await get(path(n), { access: 'private', useCache: false } as any).catch(() => null) as any
@@ -45,7 +45,7 @@ export async function vault(body: any) {
     if (!isAddress(addr) || !hexRe(32).test(salt) || !hexRe(64).test(verifier) || !hexRe(24).test(iv) || !hexRe().test(ct) || ct.length > 400 || !QUESTIONS.includes(String(question)) || !hexRe(32).test(rsalt) || !hexRe(64).test(rverifier) || !hexRe(24).test(riv) || !hexRe().test(rct) || rct.length > 400) throw err(400, 'Bad PIN or recovery data. Try again.')
     if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > 10 * 60_000) throw err(400, 'Your clock looks off. Try again.')
     const a = getAddress(addr)
-    const who = await recoverMessageAddress({ message: vaultMessage(name, a, vaultDigest({ salt, verifier, iv, ct }), ts), signature: sig }).catch(() => null)
+    const who = await recoverMessageAddress({ message: vaultMessage(name, a, vaultDigest({ salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct }), ts), signature: sig }).catch(() => null)
     if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify this device owns that wallet.")
     if ((await ownerOf(name)) !== a) throw err(403, `@${name} isn't yours on-chain, so you can't set its PIN.`)
     const prev = await load(name)

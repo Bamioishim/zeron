@@ -18405,7 +18405,7 @@ var QUESTIONS = ["What is your best color?", "What was your first pet's name?", 
 var path = (n2) => `vault/${n2}.json`;
 var err = (status, msg, extra = {}) => Object.assign(new Error(msg), { status, extra });
 var mem = /* @__PURE__ */ new Map();
-var useMem = () => !process.env.BLOB_READ_WRITE_TOKEN;
+var useMem = () => process.env.NODE_ENV !== "production" && !process.env.BLOB_READ_WRITE_TOKEN;
 async function load(n2) {
   if (useMem()) {
     const s = mem.get(path(n2));
@@ -18438,7 +18438,7 @@ async function vault(body) {
     if (!isAddress(addr) || !hexRe(32).test(salt) || !hexRe(64).test(verifier) || !hexRe(24).test(iv) || !hexRe().test(ct) || ct.length > 400 || !QUESTIONS.includes(String(question)) || !hexRe(32).test(rsalt) || !hexRe(64).test(rverifier) || !hexRe(24).test(riv) || !hexRe().test(rct) || rct.length > 400) throw err(400, "Bad PIN or recovery data. Try again.");
     if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > 10 * 6e4) throw err(400, "Your clock looks off. Try again.");
     const a = getAddress(addr);
-    const who = await recoverMessageAddress({ message: vaultMessage(name, a, vaultDigest({ salt, verifier, iv, ct }), ts), signature: sig }).catch(() => null);
+    const who = await recoverMessageAddress({ message: vaultMessage(name, a, vaultDigest({ salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct }), ts), signature: sig }).catch(() => null);
     if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify this device owns that wallet.");
     if (await ownerOf(name) !== a) throw err(403, `@${name} isn't yours on-chain, so you can't set its PIN.`);
     const prev = await load(name);

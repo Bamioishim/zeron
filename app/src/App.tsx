@@ -44,6 +44,9 @@ export function friendly(e: any): string {
     [/registered|fighter/i, 'Register in the arena first (clear level 1).'],
     [/pending|challenge/i, 'You already have a duel in progress. Wait a moment.'],
     [/daily limit|sponsored|quota/i, "You've hit today's free-gas limit. Come back tomorrow."],
+    [/RELAYER_KEY not set|relayer key.*not set|relayer.*private key/i, "Sponsored actions are unavailable because the server relayer key is missing. No transaction was sent."],
+    [/RUN_SIGNER_KEY not set/i, "Reward signing is not configured on Zeron's server. No reward transaction was sent."],
+    [/BLOB_READ_WRITE_TOKEN|persistent PIN storage/i, "PIN storage is not configured. Your PIN was not saved. Contact the Zeron team."],
     [/fetch|network|timeout/i, "Can't reach the network right now. Try again."],
   ]
   for (const [re, m] of MAP) if (re.test(r)) return m
@@ -218,9 +221,108 @@ function MuteBtn() {
 }
 // credits live in README
 export const _CREDITS = <>art: CC0 "DungeonTileset II" by 0x72 + original sprites · music: "Cave Theme" by Brandon Morris (CC0) and "Dungeon Ambience" by yd (CC0) · sfx: "512 Sound Effects (8-bit)" by Juhani Junkala (CC0), all via OpenGameArt</>
+
+type MenuView = 'stats' | 'profile'
+function MenuButton({ onSelect }: { onSelect: (view: MenuView) => void }) {
+  const [open, setOpen] = useState(false)
+  return <div className="menu-wrap">
+    <button className="menu-profile-btn" onClick={() => { setOpen(false); onSelect('profile') }}>Profile</button>
+    <button className="menu-icon" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(v => !v)}>☰</button>
+    {open && <div className="menu-dropdown">
+      <button onClick={() => { setOpen(false); onSelect('stats') }}>Stats</button>
+      <button onClick={() => { setOpen(false); onSelect('profile') }}>Profile</button>
+    </div>}
+  </div>
+}
+function StatsPanel({ stats }: { stats: { burned?: bigint | null; players?: number | null; clears?: number | null } }) {
+  const value = (v: bigint | number | null | undefined, format: (v: any) => string) =>
+    v === undefined ? '…' : v === null ? 'unavailable' : format(v)
+  return <div className="stats-panel">
+    <div className="eyebrow">Stats <span className="live-label">● live on-chain</span></div>
+    <div className="stats-grid">
+      <div className="card"><b>{value(stats.burned, fmt)}</b><span>WIF burned</span></div>
+      <div className="card"><b>{value(stats.players, (v: number) => v.toLocaleString())}</b><span>Players · indexed history</span></div>
+      <div className="card"><b>{value(stats.clears, (v: number) => v.toLocaleString())}</b><span>Levels cleared · 7d</span></div>
+    </div>
+    <p className="fine">These figures are live from Robinhood Chain mainnet. You can verify them on-chain on Blockscout, and check them anytime under Menu → Stats.</p>
+    {D.game && <a className="btn sm" href={`${EXPLORER}/address/${D.game}`} target="_blank" rel="noreferrer">View on Blockscout ↗</a>}
+  </div>
+}
+type Friend = { name: string; address: string }
+function ProfilePanel({ me, d, busy, act, approveIfNeeded, setToast }: any) {
+  const [friends, setFriends] = useState<Friend[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [friendName, setFriendName] = useState('')
+  const [notice, setNotice] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [selected, setSelected] = useState('')
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('zeron.friends.v1')
+      const parsed = raw ? JSON.parse(raw) : []
+      if (Array.isArray(parsed)) setFriends(parsed.filter((x: any) => typeof x?.name === 'string' && typeof x?.address === 'string'))
+    } catch { /* local friend list is optional */ }
+    setLoaded(true)
+  }, [])
+  useEffect(() => {
+    if (loaded) try { localStorage.setItem('zeron.friends.v1', JSON.stringify(friends)) } catch { /* storage may be unavailable */ }
+  }, [friends, loaded])
+  async function addFriend() {
+    const n = friendName.trim().replace(/^@/, '').toLowerCase()
+    if (!nameRe.test(n)) { setNotice('Use a valid Zeron @name (3–15 characters).'); return }
+    setChecking(true); setNotice('')
+    try {
+      const owner = await pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }) as string
+      if (!owner || owner === ZERO) { setNotice(`@${n} is not a registered on-chain account.`); return }
+      if (owner.toLowerCase() === account().address.toLowerCase()) { setNotice("That's your own account."); return }
+      setFriends(prev => [...prev.filter(f => f.name !== n), { name: n, address: owner }])
+      setFriendName(''); setNotice(`Verified @${n} on Robinhood Chain.`)
+    } catch { setNotice("Couldn't verify that @name on-chain. Try again.") }
+    finally { setChecking(false) }
+  }
+  return <div className="profile-panel">
+    <div className="eyebrow">Profile</div>
+    <div className="card profile-self">
+      <div><span className="fine">Your Zeron account</span><h2>{me.name ? '@' + me.name : 'No @name claimed yet'}</h2><span className="fine">{short(account().address)}</span></div>
+      <span className="chip lime">{fmt(me.wif)} WIF</span>
+    </div>
+    <div className="card">
+      <div className="eyebrow">Friends</div>
+      <p className="fine">Add a Zeron username. Each friend is checked against the live on-chain @name registry, not just saved as a contact.</p>
+      <div className="friend-add">
+        <div className="at-input"><span>@</span><input value={friendName} placeholder="friendname" autoCapitalize="none" autoCorrect="off" onChange={e => setFriendName(e.target.value.toLowerCase().replace(/\s/g, ''))} maxLength={15} /></div>
+        <button className="btn lime sm" disabled={checking || !nameRe.test(friendName.trim().replace(/^@/, '').toLowerCase())} onClick={addFriend}>{checking ? 'Checking…' : 'Add friend'}</button>
+      </div>
+      {notice && <p className="fine friend-notice">{notice}</p>}
+      <div className="friend-list">
+        {friends.length === 0 && <p className="fine dim">No friends added yet.</p>}
+        {friends.map(friend => <div className="friend-row" key={friend.name}>
+          <div><b>@{friend.name}</b><span className="fine">{short(friend.address)}</span></div>
+          <div className="friend-actions">
+            <button className="btn sm lime" onClick={() => setSelected(friend.name)}>Send WIF</button>
+            <button className="linkbtn" onClick={() => { setFriends(prev => prev.filter(f => f.name !== friend.name)); if (selected === friend.name) setSelected('') }}>Remove</button>
+          </div>
+        </div>)}
+      </div>
+    </div>
+    {selected && <div className="card profile-send">
+      <div className="eyebrow">Send WIF to @{selected}</div>
+      <Send key={selected} initialName={selected} compact me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />
+    </div>}
+  </div>
+}
+function MenuPanel({ view, onClose, stats, me, d, busy, act, approveIfNeeded, setToast }: any) {
+  return <div className="modal menu-overlay" onClick={onClose}>
+    <div className="card menu-panel" onClick={e => e.stopPropagation()}>
+      <div className="mhead"><span className="eyebrow">{view === 'stats' ? 'Stats' : 'Profile'}</span><button className="btn sm" onClick={onClose}>✕</button></div>
+      {view === 'stats' ? <StatsPanel stats={stats} /> : <ProfilePanel me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}
+    </div>
+  </div>
+}
+
 /** title screen: slowly panning, torch-lit dungeon behind the logo and a central play panel */
-/** title screen: panning torch-lit dungeon, logo, Halloween banner, one CTA, live on-chain stats, 3 steps */
-function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me: string; name?: string; stats: { burned?: bigint; players?: number; clears?: number; returning7d?: number; runs7d?: number; batches7d?: number; prizePoolFunded7d?: bigint; prizesPaid7d?: bigint; armoryBalance?: bigint; armoryPaid7d?: bigint; armoryRunwayDays?: number | null } }) {
+/** title screen: logo, Halloween banner, one CTA and wallet status */
+function Opening({ onEnter, onMenuView, me }: { onEnter: (t?: Tab) => void; onMenuView: (view: MenuView) => void; me: string }) {
   const map = useMemo(() => dungeonMap(dayNow() % 97 + 3, roomsFor({ kind: 'level', level: 2 } as any).map((r) => r.key)), [])
   const api = useRef<WorldApi | null>(null)
   useEffect(() => {
@@ -229,40 +331,19 @@ function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me:
     const go = () => { if (!alive) return; const p = pts[i++ % pts.length]; api.current?.walkTo(p.x, p.y); setTimeout(go, 6500) }
     const t = setTimeout(go, 800); return () => { alive = false; clearTimeout(t) }
   }, [map])
-  const n = (v?: number) => (v === undefined ? '…' : v.toLocaleString())
   return (
     <div className="opening">
       <div className="opening-bg" aria-hidden><World map={map} defeated={0} locked={false} paused={false} onInteract={() => {}} onTouchFoe={() => {}} apiRef={api} prompt={() => {}} /></div>
       <div className="opening-veil" />
       <div className="opening-fg">
-        <div className="opening-mute"><MuteBtn /></div>
+        <div className="opening-actions"><MenuButton onSelect={onMenuView} /><MuteBtn /></div>
         {HALLOWEEN && <button className="hw-banner" onClick={() => onEnter('world')}>🎃 <b>Halloween event:</b> the Pumpkin King haunts the Gate. Beat him for a drop-only crown.</button>}
         <Svg src={ICON} className="op-icon" />
         <Svg src={WORDMARK} className="op-word" />
         <div className="op-tag">a daily pixel dungeon powered by $wif</div>
         <button className="btn lime big op-cta" onClick={() => onEnter('world')}>Enter the Depths ▸</button>
-        <div className="fine op-who">{name ? <>Playing as <b>@{name}</b></> : <>Wallet ready · {short(me)}</>} · 0 ETH needed, gas is on Zeron</div>
-        <div className="op-stats">
-          <div><b>{n(stats.players)}</b><span>named wallets · indexed mainnet history</span></div>
-          <div><b>{n(stats.returning7d)}</b><span>returning players · 7d</span></div>
-          <div><b>{n(stats.runs7d)}</b><span>recorded runs · 7d</span></div>
-          <div><b>{n(stats.batches7d)}</b><span>EIP-7702 batches · 7d</span></div>
-          <div><b>{stats.prizePoolFunded7d === undefined ? '…' : fmt(stats.prizePoolFunded7d)}</b><span>WIF into prize pool · 7d</span></div>
-          <div><b>{stats.prizesPaid7d === undefined ? '…' : fmt(stats.prizesPaid7d)}</b><span>WIF prizes paid · 7d</span></div>
-          <div><b>{stats.armoryBalance === undefined ? '…' : fmt(stats.armoryBalance)}</b><span>WIF in Armory rewards</span></div>
-          <div><b>{stats.armoryRunwayDays == null ? '—' : stats.armoryRunwayDays.toFixed(1) + 'd'}</b><span>Armory runway · 7d payout rate</span></div>
-          <div><b className="limet">{stats.burned === undefined ? '…' : fmt(stats.burned)}</b><span>WIF sent to dead addresses</span></div>
-          <div className="op-live">● live mainnet data</div>
-        </div>
-        <div className="op-steps">
-          <div><i>1</i><b>Compete</b><span>Enter ranked runs and buy daily items with WIF.</span></div>
-          <div><i>2</i><b>Pool grows</b><span>80% of ranked-entry and daily-item fees fund that day's prize pool.</span></div>
-          <div><i>3</i><b>Winner gets paid</b><span>After the day ends, anyone can settle the pool to the top ranked player. Then the next contest begins.</span></div>
-        </div>
-        <p className="fine">Armory play rewards are separate. They are paid from a finite prefunded WIF balance, not from the ranked prize pool. The runway above uses its live balance and observed 7-day payouts.</p>
-        <div className="op-links"><button className="linkbtn" onClick={() => onEnter('how')}>How it works</button> · <button className="linkbtn" onClick={() => onEnter('board')}>Leaderboard</button> · <button className="linkbtn" onClick={() => onEnter('burn')}>Destroyed tracker</button></div>
+        <div className="fine op-who">Wallet ready · {short(me)} · 0 ETH needed, gas is on Zeron</div>
       </div>
-      <div className="op-foot">Created by Bamio for the World is Flat hackathon</div>
     </div>
   )
 }
@@ -290,10 +371,11 @@ export default function App() {
   const me = useMemo(() => account().address, [])
   const [tab, setTab] = useState<Tab>('world')
   const [opened, setOpened] = useState(false)
+  const [menuView, setMenuView] = useState<MenuView | null>(null)
   const [namePrompt, setNamePrompt] = useState<string>('')
   const [m, setM] = useState<Me>({ items: {}, q: Q0 })
   const [d, setD] = useState<Day>({ prices: PRICES_FALLBACK })
-  const [stats, setStats] = useState<{ burned?: bigint; players?: number; clears?: number; returning7d?: number; runs7d?: number; batches7d?: number; prizePoolFunded7d?: bigint; prizesPaid7d?: bigint; armoryBalance?: bigint; armoryPaid7d?: bigint; armoryRunwayDays?: number | null }>({})
+  const [stats, setStats] = useState<{ burned?: bigint | null; players?: number | null; clears?: number | null }>({})
   const nudged = useRef(false)
   const claimedHere = useRef(false)
   useEffect(() => { if (m.name && !claimedHere.current) setNamePrompt('') }, [m.name])
@@ -355,7 +437,13 @@ export default function App() {
     } catch (e) { console.warn(e) }
   }, [me])
   useEffect(() => { refresh(); const t = setInterval(refresh, 15000); return () => clearInterval(t) }, [refresh])
-  useEffect(() => { if (deployed) homeStats().then(setStats).catch(() => {}) }, [])
+  useEffect(() => {
+    if (!deployed) return
+    let live = true
+    const load = () => homeStats().then(v => { if (live) setStats(v) }).catch(() => { if (live) setStats({ burned: null, players: null, clears: null }) })
+    load(); const timer = setInterval(load, 60000)
+    return () => { live = false; clearInterval(timer) }
+  }, [])
 
   const loadFighters = useCallback(async () => {
     const Qa = (D as any).quest as Hex; if (!Qa) return []
@@ -434,12 +522,13 @@ export default function App() {
     if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { const i = TABS.indexOf(tab) + (dx < 0 ? 1 : -1); if (i >= 0 && i < TABS.length) setTab(TABS[i]) }
   }
 
-  if (!opened) return <Opening me={me} name={m.name} stats={stats} onEnter={(t) => { audio.unlock(); setTab(t || 'world'); setOpened(true); if (needName || (deployed && m.name === undefined)) setNamePrompt('Pick your @name') }} />
+  if (!opened) return <><Opening me={me} onMenuView={setMenuView} onEnter={(t) => { audio.unlock(); setTab(t || 'world'); setOpened(true); if (needName || (deployed && m.name === undefined)) setNamePrompt('Pick your @name') }} />{menuView && <MenuPanel view={menuView} onClose={() => setMenuView(null)} stats={stats} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}</>
   return (
     <div className="shell" onTouchStart={onTS} onTouchEnd={onTE}>
       <header className="top">
         <div className="brand" onClick={() => setOpened(false)} title="Title screen"><Svg src={ICON} className="hd-icon" /><div><Svg src={WORDMARK} className="hd-word" /><div className="sub">a daily dungeon powered by $wif</div></div><MuteBtn /></div>
         <div className="wallet">
+          <MenuButton onSelect={setMenuView} />
           <button className="chip namechip" title={me} onClick={() => setNamePrompt(m.name ? '' : 'Pick your @name')}><Pix k={'c' + (m.wardrobe?.eq ?? 0)} size={18} />{m.name ? '@' + m.name : m.name === '' ? 'claim @name' : '…'}</button>
           <div className="chip lime"><Sprite name="coin" size={14} /> {fmt(m.wif)} WIF</div>
           <button className="chip burnchip" onClick={() => setTab('burn')} title="Total WIF destroyed by FeeSink contracts, read on-chain">🔥 {fmt(d.burnedAll)} destroyed</button>
@@ -466,6 +555,7 @@ export default function App() {
         <div>{toast.msg}{toast.link && <> · <a href={toast.link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>view tx ↗</a></>}</div>
         {toast.gas && <div className="toast-sub">⛽ Gas: 0.2 WIF (0.1 to dead address + 0.1 to relayer) · FeeSink destroyed: {toast.burned === null || toast.burned === undefined ? '…' : fmt(toast.burned)}</div>}
       </div>}
+      {menuView && <MenuPanel view={menuView} onClose={() => setMenuView(null)} stats={stats} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}
       {showActs && <div className="acts card" onClick={(e) => e.stopPropagation()}>
         <div className="mhead"><span className="eyebrow">Activity</span><button className="btn sm" onClick={() => setShowActs(false)}>✕</button></div>
         {acts.length === 0 && <div className="fine dim">No transactions yet this session.</div>}
@@ -1029,8 +1119,8 @@ function Board({ d, board, me, day, busy, act, reload, heroes }: any) {
   )
 }
 
-function Send({ me, d, busy, act, approveIfNeeded, setToast }: any) {
-  const [to, setTo] = useState(''); const [amt, setAmt] = useState('10'); const [rename, setRename] = useState(false); const [pinSet, setPinSet] = useState(false); const [loginOpen, setLoginOpen] = useState(false)
+function Send({ me, d, busy, act, approveIfNeeded, setToast, initialName = '', compact = false }: any) {
+  const [to, setTo] = useState(initialName); const [amt, setAmt] = useState('10'); const [rename, setRename] = useState(false); const [pinSet, setPinSet] = useState(false); const [loginOpen, setLoginOpen] = useState(false)
   const n = to.trim().replace(/^@/, '').toLowerCase()
   const L = useNameLookup(n)
   const v = (() => { try { return parseEther(amt || '0') } catch { return 0n } })()
@@ -1046,10 +1136,10 @@ function Send({ me, d, busy, act, approveIfNeeded, setToast }: any) {
   }
   return (
     <section className="grid2">
-      <div className="card">
+      {!compact && <div className="card">
         {me.name && !rename ? <><div className="eyebrow">Your @name</div><h2>@{me.name}</h2><p className="fine">This is your identity everywhere in Zeron.</p><button className="linkbtn" onClick={() => setRename(true)}>Change name ({fmt(d.nameFee)} WIF)</button></>
           : <NamePick me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} onDone={() => setRename(false)} onSkip={me.name ? () => setRename(false) : undefined} />}
-      </div>
+      </div>}
       <div className="card">
         <div className="eyebrow">Send $wif by @name</div>
         <div className="at-input"><span>@</span><input placeholder="friend" value={to} onChange={(e) => setTo(e.target.value.toLowerCase().replace(/\s/g, ''))} maxLength={16} aria-label="send to @name" /></div>
@@ -1059,9 +1149,9 @@ function Send({ me, d, busy, act, approveIfNeeded, setToast }: any) {
         <button className="btn lime" disabled={!found || !!self || v <= 0n || low || !!busy} onClick={send}>{busy === 'send' ? 'Sending…' : found && !self ? `Send ${amt || 0} WIF to @${n}` : `Send ${amt || 0} WIF`}</button>
         <p className="fine">There's no fee on sends, and you need zero ETH.</p>
       </div>
-      <div className="card span2 fine">Your game wallet lives in this browser (address {short(account().address)}). <button className="link" onClick={() => { navigator.clipboard.writeText(getKey()); alert('Private key copied. Keep it safe.') }}>Export key</button>{me.name && <> · <button className="link" onClick={() => setPinSet(true)}>Change PIN</button></>} · <button className="link" onClick={() => setLoginOpen(true)}>Log in to another @name</button>
+      {!compact && <div className="card span2 fine">Your game wallet lives in this browser (address {short(account().address)}). <button className="link" onClick={() => { navigator.clipboard.writeText(getKey()); alert('Private key copied. Keep it safe.') }}>Export key</button>{me.name && <> · <button className="link" onClick={() => setPinSet(true)}>Change PIN</button></>} · <button className="link" onClick={() => setLoginOpen(true)}>Log in to another @name</button>
         {pinSet && <SetPin name={me.name} title="Change PIN" onDone={() => { setPinSet(false); setToast({ msg: 'PIN saved.' }) }} onSkip={() => setPinSet(false)} />}
-        {loginOpen && <PinLogin onBack={() => setLoginOpen(false)} backLabel="Cancel" />}</div>
+        {loginOpen && <PinLogin onBack={() => setLoginOpen(false)} backLabel="Cancel" />}</div>}
     </section>
   )
 }
