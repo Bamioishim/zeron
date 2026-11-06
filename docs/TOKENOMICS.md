@@ -113,7 +113,7 @@ A batch skips `gasFeeCalls()` only if it is a **free-onboarding** batch (≤2 ca
 
 Allowed batch shapes: `starter` alone; first `claim` alone; or `starter` + first `claim` together. Any other call in the batch, a rename while already named, or >2 calls → **not** onboarding → **0.2 WIF gas fee required**.
 
-Comment in `chain.ts` that says “except a lone starter claim” is incomplete relative to the actual `isOnboarding` / `isFreeOnboarding` logic above.
+The `chain.ts` comment and client/server onboarding checks now describe the same free batch shapes: starter grant and/or first `@name` claim.
 
 On-chain account limit: `WifAccount.SPONSORED_PER_DAY = 20` sponsored batches per player day.
 
@@ -150,7 +150,7 @@ Live costume prices (id → WIF): **1→6, 2→8, 3→12, 4→10, 5→10, 6→15
 
 Live weapon list prices (WIF): **1 Bow 6 · 2 Spear 9 · 3 Twin Daggers 12 · 4 Fire Staff 15 · 5 Bazooka 20 · 6 War Hammer 25 · 7 Pumpkin Launcher 18** (UI treats 7 as drop-only / not sold).  
 `dailyCap()` live = **10 WIF / wallet / day** (not 150—older docs and some UI strings are wrong).  
-Frontend `rewardScaleBps = 1000` → displayed “reward units” pay at **0.1×** (e.g. UI “+10 WIF” unit → **1 WIF** paid when the pool allows).
+Frontend `rewardScaleBps = 1000` applies a **0.1×** mainnet payout scale. The interface now shows the scaled amounts directly: **0.3 WIF** per small enemy and **1 WIF** per boss / level-clear reward unit, subject to the prefunded pool and 10 WIF daily cap.
 
 ### 5.4 Game — `WifDepths`
 
@@ -179,19 +179,15 @@ Live item prices: id **1 = 2.5**, **2 = 4**, **3 = 4** WIF.
 
 ---
 
-## 6. Operational funding snapshot (prepaid — not a bank debit)
+## 6. Pool and sponsor funding
 
-**Label:** balances at **2026-11-06 ~02:02 WAT**, block **107180306**, public RPC only. No USD conversion. No forecast of how many actions remain.
+Zeron's starter and reward balances are **pre-funded contract balances**, not newly minted rewards. They decrease as grants, rewards, and other contract flows are paid. The contracts do not automatically replenish these pools.
 
-| Account | ETH | WIF | Notes |
-|---|---|---|---|
-| Relayer `0x00E7…A26a` | **0.0007993756807** | **1** | Sponsors gas. Repo default auto-pause floor in `app/src/server/core.ts` is `SPONSOR_MIN_BALANCE_WEI` **or** `20000000000000` (**2e13** wei ≈ **0.00002 ETH**) if unset. **Production Vercel value unknown** from this repo—do not assume it matches the default. |
-| Treasury `0x2bCE…958E` | **0.000076253956435273** | **≈92.85875** | Deployer / fee recipient |
-| Armory | 0 | **194.3** | Reward pool (seeded 200) |
-| Shop | 0 | **80** | Starter + shop float (seeded 100) |
-| Game | 0 | **2** | Contract balance |
-
-Solana funding address used for the Nov 1 bridge (`9TKr9SV2BkG9V6KFurcdCFQzFH4zTnJB5eubH3Uf4Erx`) held only dust afterward; **no evidence of automatic top-ups** after **2026-11-01**. WIF transfers involving Zeron sinks after seed were also **Nov 1 only** in a full log scan (last ~**2026-11-01 20:44 WAT**). Prepaid funds sit on-chain until spent; this does **not** prove anything about off-chain card/bank charges.
+- Read the live `Shop` balance before assuming a new player can claim the 5 WIF starter grant.
+- Read the live `Armory` balance and `dailyCap()` before describing play-to-earn availability.
+- Read the live relayer ETH balance and check `SPONSOR_MIN_BALANCE_WEI`, `SPONSOR_DAILY_CAP`, and `SPONSOR_PAUSED` in the production environment before promising sponsored actions.
+- The repository default relayer pause floor is `20000000000000` wei (0.00002 ETH) when `SPONSOR_MIN_BALANCE_WEI` is unset. The actual production environment value is not visible from source code.
+- These balances are live operational data. Verify them through read-only RPC calls when needed; do not keep dated personal or treasury balance snapshots in permanent project documentation.
 
 ---
 
