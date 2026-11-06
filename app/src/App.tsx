@@ -338,7 +338,7 @@ function Opening({ onEnter, onMenuView, me, name }: { onEnter: (t?: Tab) => void
         <Svg src={WORDMARK} className="op-word" />
         <div className="op-tag">a daily pixel dungeon powered by $wif</div>
         <button className="btn lime big op-cta" onClick={() => onEnter('world')}>Enter the Depths ▸</button>
-        <div className="fine op-who">{name ? <>Playing as <b>@{name}</b></> : <>Wallet ready · {short(me)}</>} · 0 ETH needed, gas is on Zeron</div>
+        <div className="fine op-who">Wallet ready · {short(me)} · 0 ETH needed, gas is on Zeron</div>
       </div>
     </div>
   )
