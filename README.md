@@ -6,8 +6,8 @@
 > - **Play:** https://zeron-game-sigma.vercel.app
 > - **Network:** Robinhood Chain mainnet · chain ID `4663`
 > - **Token:** WIF · `0x5173b8eA6923c2d40267890D45C46a3480954773`
-> - **Core loop today:** players spend WIF on ranked entries and game items; 80% of ranked-entry and daily-item fees stay in the Game contract's daily prize pool. Separately, Armory play rewards are paid from a prefunded Armory balance. **These are separate pools, so the current deployment is not yet a self-replenishing fee-to-reward flywheel.**
-> - **On-chain traction:** no independently verified player, retention, or gameplay-volume figures are published in this repository yet. The current demo includes local practice footage and does not prove live gameplay transactions.
+> - **Live ranked flywheel:** ranked entries and daily-item purchases pay WIF fees; 80% enters that day's on-chain Game prize pool; after the day ends, anyone can settle the pool to the top ranked player. Players return to compete again, generating the next day's entry and item fees. No invented emissions: the prize is funded by actual player spend. Armory kill/level rewards are a separate prefunded pool.
+ > - **Live proof metrics:** the homepage now reads named wallets, 7-day returning players, recorded runs, prize-pool inflows and payouts, Armory balance, and estimated Armory reward runway directly from Robinhood Chain events. These are live counters, not practice-mode estimates.
 > - **Economy limits:** 0.2 WIF per standard sponsored batch; 10 WIF per-wallet daily Armory reward cap; reward pools are finite and have no automatic top-up.
 >
 > **Status honesty:** mainnet contracts and WIF-denominated economy actions are deployed. The demo's combat footage is practice-mode footage. Do not treat simulated HUD rewards as paid on-chain rewards or claim retention/traction without measured data.
@@ -178,7 +178,7 @@ Without `BLOB_READ_WRITE_TOKEN`, the vault falls back to in-memory storage. That
 - [Maintainer handover](HANDOVER.md)
 - [Four-post X thread copy](docs/SOCIAL-THREAD.md)
 
-The demo combines public-site interface footage with local practice-mode gameplay footage. Practice footage is labelled as local practice and does not show real on-chain gameplay transactions or prove token transfers. No wallet-creation, batch-count, WIF-volume, or daily-returning-player metrics are currently published here because verified measurements have not been supplied.
+The repository's existing desktop video still contains local practice-mode combat and must not be submitted as proof of live gameplay. The live app homepage now reads wallet, retention, run, prize-pool, and Armory runway metrics from public mainnet events. Record a fresh screen capture of a real ranked entry, on-chain run recording, and the resulting prize settlement before presenting gameplay footage as mainnet proof. The app does not currently publish a global sponsored-batch count; the visible run count is a count of `RunRecorded` events, not a batch count.
 
 ## Art and audio credits
 
