@@ -3,6 +3,7 @@
 **Zeron is a top-down pixel dungeon game built around World is Flat ($WIF) on Robinhood Chain.** Players explore a town, fight through dungeon levels, challenge arena opponents, craft gear, buy items, and send WIF to other players by their `@name`.
 
 - **Play:** https://zeron-game-sigma.vercel.app
+- **Access:** production is public; Vercel SSO remains enabled for preview deployments only.
 - **Network:** Robinhood Chain mainnet
 - **Chain ID:** `4663`
 - **Explorer:** https://robinhoodchain.blockscout.com
