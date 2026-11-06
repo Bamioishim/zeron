@@ -191,9 +191,34 @@ Zeron's starter and reward balances are **pre-funded contract balances**, not ne
 
 ---
 
+## 6.1 Is the current economy a self-sustaining flywheel?
+
+**Not yet.** The deployed contracts contain two distinct funding paths:
+
+1. Ranked entries and daily-run item purchases send 80% of those Game fees to the Game contract's daily prize pool (20% is transferred to the dead address).
+2. Armory play rewards are paid from the separately prefunded Armory contract balance.
+
+The Game prize pool does **not** automatically top up the Armory reward pool. Therefore, it would be inaccurate to pitch the current system as “fees fund rewards, rewards bring players back, and those players generate the same fees again.” The game has WIF-denominated spending and rewards, but the complete closed-loop funding mechanism is not implemented.
+
+### Reward-pool runway
+
+The Armory pool is finite and has no automatic refill. A defensible runway estimate requires a live Armory WIF balance and a measured average daily reward outflow over a stated period. Neither a dated balance snapshot nor verified daily payout history is currently published as a reliable operating metric, so this document does not invent a number of days.
+
+Use this calculation when those measurements are available:
+
+`runway_days = current_armory_WIF_balance / average_daily_armory_reward_payout_WIF`
+
+For a conservative estimate, use a rolling 7-day and 30-day average, report the measurement window and block/time, and account for any operator top-ups separately. The on-chain 10 WIF per-wallet daily cap is a maximum limit, **not** an estimate of actual daily pool outflow.
+
+### What would make it a real flywheel?
+
+A future design could route a clearly specified share of eligible Game fees into the same reward reserve that pays verified player rewards, with on-chain accounting, explicit reserve limits, and transparent refill rules. That requires a reviewed contract change and deployment; do not imply it exists today.
+
+---
+
 ## 7. Security & economy limitations
 
-- The relayer is trusted to enforce its allowlist, apply operational limits, and submit sponsored batches. The run signer is trusted to replay and sign gameplay results.
+- The relayer is trusted to enforce its allowlist, apply operational limits, and submit sponsored batches. The run signer is trusted to replay and sign gameplay results. This is an intentional early-stage trust boundary: server replay is more resistant to simple client-side score spoofing than accepting a browser-reported score, while keeping the current game practical to ship. It is not trustless. Planned improvements are public deterministic replay inputs, independently reproducible verification, a challenge/dispute period, and eventually on-chain-verifiable reward claims.
 - `SPONSOR_*` environment settings are operational controls. The EIP-7702 account contract independently enforces its hard cap of 20 sponsored batches per player per day.
 - The PIN vault stores encrypted wallet ciphertext and one-way verifiers. With no `BLOB_READ_WRITE_TOKEN`, the API falls back to in-memory storage, which is not persistent.
 - Starter and reward pools are finite. A reward is paid only while the relevant pool has funds; rewards are not guaranteed income.
