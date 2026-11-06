@@ -286,7 +286,7 @@ export default function App() {
   const [namePrompt, setNamePrompt] = useState<string>('')
   const [m, setM] = useState<Me>({ items: {}, q: Q0 })
   const [d, setD] = useState<Day>({ prices: PRICES_FALLBACK })
-  const [stats, setStats] = useState<{ burned?: bigint; players?: number; clears?: number }>({})
+  const [stats, setStats] = useState<{ burned?: bigint; players?: number; clears?: number; returning7d?: number; runs7d?: number; prizePoolFunded7d?: bigint; prizesPaid7d?: bigint; armoryBalance?: bigint; armoryPaid7d?: bigint; armoryRunwayDays?: number | null }>({})
   const nudged = useRef(false)
   const claimedHere = useRef(false)
   useEffect(() => { if (m.name && !claimedHere.current) setNamePrompt('') }, [m.name])
