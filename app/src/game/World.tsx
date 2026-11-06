@@ -8,15 +8,15 @@ const DV: Record<Dir, [number, number]> = { up: [0, -1], down: [0, 1], left: [-1
 export interface WorldApi { warp?: (x: number, y: number) => void; screen: (x: number, y: number) => { x: number; y: number }; foe: (idx: number) => { x: number; y: number } | null; held: Dir | null; action: () => void; walkTo: (x: number, y: number, adjacent?: boolean) => boolean; moving?: () => boolean; pos: () => { x: number; y: number }; near: () => Npc | null }
 
 /** Lightweight canvas engine: grid movement with tweening, wandering foes, NPC prompts, tap-to-walk. */
-export default function World({ map, defeated, locked, paused, onInteract, onTouchFoe, onDoor, apiRef, prompt, hunt }: {
+export default function World({ map, defeated, locked, paused, onInteract, onTouchFoe, onDoor, apiRef, prompt }: {
   map: MapDef; defeated: number; locked: boolean; paused: boolean; prompt: (n: Npc | null) => void
-  onInteract: (n: Npc) => void; onTouchFoe: (idx: number) => void; onDoor?: () => void; hunt?: boolean; apiRef: { current: WorldApi | null }
+  onInteract: (n: Npc) => void; onTouchFoe: (idx: number) => void; onDoor?: () => void; apiRef: { current: WorldApi | null }
 }) {
   const cv = useRef<HTMLCanvasElement>(null)
   const st = useRef({ x: map.start.x, y: map.start.y, fx: map.start.x, fy: map.start.y, t: 1, face: 'down' as Dir, queue: [] as { x: number; y: number }[],
     foes: map.foes.map((f) => ({ ...f, fx: f.x, fy: f.y, t: 1, next: 0 })), near: null as Npc | null, frame: 0, ox: 0, oy: 0, VW: 1, VH: 1 })
-  const props_ = useRef({ defeated, locked, paused, onInteract, onTouchFoe, onDoor, prompt, hunt })
-  props_.current = { defeated, locked, paused, onInteract, onTouchFoe, onDoor, prompt, hunt }
+  const props_ = useRef({ defeated, locked, paused, onInteract, onTouchFoe, onDoor, prompt })
+  props_.current = { defeated, locked, paused, onInteract, onTouchFoe, onDoor, prompt }
   const held = useRef<Dir | null>(null)
 
   useEffect(() => {
@@ -219,7 +219,7 @@ export default function World({ map, defeated, locked, paused, onInteract, onTou
     const foe = s.foes.find((f) => f.idx >= props_.current.defeated && f.x === tx && f.y === ty)
     const adj = Math.abs(tx - s.x) + Math.abs(ty - s.y) === 1
     if (foe && adj) return props_.current.onTouchFoe(foe.idx)
-    if (foe && !props_.current.hunt) return // walking to a foe for you is the Auto-Hunt boost
+    if (foe) return // stop at enemies; walking into combat is always a deliberate player action
     if (map.tiles[ty]?.[tx] === 'D' && adj) return props_.current.onDoor?.()
     apiRef.current?.walkTo(tx, ty, !!npc || !!foe || map.tiles[ty]?.[tx] === 'D')
   }

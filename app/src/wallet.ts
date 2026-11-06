@@ -25,7 +25,7 @@ let queue: Promise<any> = Promise.resolve()
 /** One sponsored batch at a time (parallel batches would sign the same account nonce). */
 const fnOf = (c: Call, abi: any) => { try { return decodeFunctionData({ abi, data: c.data }).functionName } catch { return '' } }
 /** welcome gift and/or FIRST @name: free for the player (no WIF gas fee). Mirrors the relay's isOnboarding check. */
-async function isFreeOnboarding(calls: Call[]) {
+export async function isFreeOnboarding(calls: Call[]) {
   if (!calls.length || calls.length > 2) return false
   let claim = false
   for (const c of calls) {
@@ -39,7 +39,7 @@ async function isFreeOnboarding(calls: Call[]) {
   return !cur
 }
 export function sponsored(calls: Call[]): Promise<{ hash: Hex; explorer: string }> {
-  // gas is paid in $wif: prepend the fee (half burned, half to the sponsor) unless this is the free onboarding batch
+  // Standard sponsored batches prepend a 0.2 WIF fee split between the dead address and relayer; onboarding batches are free.
   const prep = async () => ((await isFreeOnboarding(calls)) ? calls : [...gasFeeCalls(), ...calls])
   const go = () => prep().then((c) => sponsoredOnce(c, 0))
   const run = queue.then(go, go)

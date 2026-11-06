@@ -74,8 +74,8 @@ export const armoryAbi = parseAbi([
   'function totalDestroyed() view returns (uint256)', 'event Rewarded(address indexed who, uint256 amount, uint8 ammoUsed, uint8 drop)',
 ])
 
-/** gas is paid in $wif: every sponsored batch (except a lone starter claim) starts with
- *  transfer(DEAD, fee/2) + transfer(relayer, fee - fee/2), so half is burned and half repays the sponsor */
+/** Standard sponsored batches repay gas in WIF: half goes to the dead address and half to the relayer.
+ *  Free-onboarding batches (starter grant and/or first @name claim) omit this fee. */
 export function gasFeeCalls(): Call[] {
   const DEAD = '0x000000000000000000000000000000000000dEaD' as const
   const fee = BigInt(D.gasFeeWei || '0'); if (!fee || !D.relayer) return []
