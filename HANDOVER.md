@@ -4,7 +4,7 @@ This document is the operational guide for maintaining the live Zeron deployment
 
 ## Release at a glance
 
-- **Production app:** https://zeron-game.vercel.app
+- **Production app:** https://zeron-game-sigma.vercel.app
 - **GitHub:** https://github.com/Bamioishim/zeron
 - **Production branch:** `main`
 - **Vercel project:** `zeron-game`
@@ -15,6 +15,8 @@ This document is the operational guide for maintaining the live Zeron deployment
 - **Canonical WIF:** `0x5173b8eA6923c2d40267890D45C46a3480954773`
 
 The Vercel project is connected to this GitHub repository. Non-production branches are preview releases; pushes to `main` are production releases. Always verify the target branch and deployment state before treating a URL as production.
+
+The legacy hostname `zeron-game.vercel.app` is still assigned to a separate older Vercel project/deployment. It was not reassigned during this release. Do not move that alias unless the owner explicitly requests the routing change.
 
 ## Repository layout
 
