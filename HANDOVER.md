@@ -38,6 +38,8 @@ npm run build
 npm run lint
 ```
 
+The production build runs Oxlint, the TypeScript project check, and the Vite build in sequence; the explicit lint command is useful when iterating on lint fixes.
+
 Contracts:
 
 ```bash
