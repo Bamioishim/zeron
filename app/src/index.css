@@ -272,3 +272,52 @@ footer{margin-top:28px;color:var(--dim);font-size:11px;text-align:center}
 @media (max-width:760px){.game.inrun.intown{justify-content:flex-start}.game.intown .hud{margin-bottom:6px}.game.intown .worldwrap{width:min(100%,calc((100dvh - 250px) * 11 / 15))}}
 @media (max-width:760px){.game.intown .pad{margin-top:auto}}
 .pinrow{display:flex;gap:8px}.pinrow .pin{flex:1;min-width:0;text-align:center;letter-spacing:.5em;font-size:18px;border:1px solid #3a4a10;border-radius:8px;background:#0a0c08;color:inherit;padding:8px;margin:0}.pinrow .pin:focus{outline:1px solid #d4fc50}
+
+
+/* Menu, live stats and profile */
+.opening-actions{position:absolute;top:16px;right:16px;display:flex;align-items:center;gap:8px;z-index:5}
+.menu-wrap{position:relative;z-index:90}
+.menu-icon{width:40px;height:36px;border:1px solid var(--line);border-radius:8px;background:rgba(22,22,22,.94);color:var(--ink);font:20px 'Silkscreen',monospace;cursor:pointer}
+.menu-icon:hover{border-color:var(--lime);color:var(--lime)}
+.menu-dropdown{position:absolute;right:0;top:calc(100% + 8px);min-width:148px;padding:6px;background:#161616;border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.55);display:flex;flex-direction:column;gap:4px}
+.menu-dropdown button{background:transparent;border:0;border-radius:6px;color:var(--ink);font:12px 'Silkscreen',monospace;text-align:left;padding:10px;cursor:pointer}
+.menu-dropdown button:hover{background:rgba(212,252,80,.12);color:var(--lime)}
+.menu-panel{width:min(760px,100%);max-height:88vh;overflow:auto}
+.stats-panel>.eyebrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.live-label{color:var(--lime);font:10px 'Space Mono',monospace;white-space:nowrap}
+.stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}
+.stats-grid .card{min-width:0;padding:14px}
+.stats-grid b{display:block;color:var(--lime);font:20px 'Silkscreen',monospace;overflow-wrap:anywhere}
+.stats-grid span{display:block;color:var(--dim);font-size:11px;margin-top:6px}
+.stats-panel>p{margin:12px 0}
+.profile-panel{display:flex;flex-direction:column;gap:12px}
+.profile-self{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.profile-self h2{margin:4px 0}
+.friend-add{display:flex;gap:8px;align-items:center}
+.friend-add .at-input{flex:1;min-width:0}
+.friend-add .btn{white-space:nowrap}
+.friend-notice{margin:8px 0;color:var(--lime)}
+.friend-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.friend-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);min-width:0}
+.friend-row>div:first-child{display:flex;flex-direction:column;gap:4px;min-width:0;overflow-wrap:anywhere}
+.friend-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.profile-send .grid2{grid-template-columns:minmax(0,1fr)}
+.menu-overlay{z-index:100}
+.menu-panel .profile-send{min-width:0}
+.op-steps{display:flex;flex-direction:column;position:static;height:auto;gap:12px}
+.op-steps>div{position:static;height:auto;min-height:0;white-space:normal;overflow:visible}
+.op-steps span{overflow-wrap:anywhere;word-break:normal;line-height:1.5}
+@media (max-width:520px){
+  .stats-grid{grid-template-columns:1fr}
+  .friend-add{align-items:stretch}
+  .friend-row{align-items:flex-start}
+  .friend-actions{justify-content:flex-end}
+  .menu-panel{padding:12px}
+  .opening-fg{padding:20px 16px}
+}
+@media (max-width:390px){
+  .friend-add{flex-direction:column}
+  .friend-add .btn{width:100%}
+  .friend-row{flex-direction:column}
+  .friend-actions{width:100%;justify-content:flex-start}
+}
