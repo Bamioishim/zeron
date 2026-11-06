@@ -191,30 +191,35 @@ Zeron's starter and reward balances are **pre-funded contract balances**, not ne
 
 ---
 
-## 6.1 Is the current economy a self-sustaining flywheel?
+## 6.1 The live ranked prize flywheel
 
-**Not yet.** The deployed contracts contain two distinct funding paths:
+**The ranked prize-pool loop is implemented on-chain.** It is important to distinguish it from the separate Armory kill/level reward pool.
 
-1. Ranked entries and daily-run item purchases send 80% of those Game fees to the Game contract's daily prize pool (20% is transferred to the dead address).
-2. Armory play rewards are paid from the separately prefunded Armory contract balance.
+1. **Players generate fees.** A player pays the ranked daily entry fee, and players can also buy daily-run items.
+2. **Fees fund the prize.** The Game contract retains the configured share of those fees. At the current 20% destruction setting, **80%** is added to `pool[today]`.
+3. **The contract pays the winner.** After the day ends, anyone can call `settle(day)`. The contract transfers that day's accumulated pool to the top ranked player. If no leader exists, the pool rolls into the current day.
+4. **Competition restarts.** Players return for the next daily contest. New ranked entries and item purchases generate the next pool.
 
-The Game prize pool does **not** automatically top up the Armory reward pool. Therefore, it would be inaccurate to pitch the current system as “fees fund rewards, rewards bring players back, and those players generate the same fees again.” The game has WIF-denominated spending and rewards, but the complete closed-loop funding mechanism is not implemented.
+This is a real fee → prize pool → player reward → next competition loop. It is not a guaranteed yield or a promise of a fixed prize: pool size depends on actual player activity and paid item usage. The contract's `Entered`, `Bought`, and `Settled` events are the source of truth for contributions and payouts.
 
-### Reward-pool runway
+### Separate Armory rewards and runway
 
-The Armory pool is finite and has no automatic refill. A defensible runway estimate requires a live Armory WIF balance and a measured average daily reward outflow over a stated period. Neither a dated balance snapshot nor verified daily payout history is currently published as a reliable operating metric, so this document does not invent a number of days.
+Armory kill/level rewards are **not** paid from the ranked Game prize pool. They come from the separately prefunded Armory WIF balance. That balance is finite, has no automatic refill, and rewards stop when it is depleted. An authorized operator must transfer WIF into the Armory contract to replenish it.
 
-Use this calculation when those measurements are available:
+The live homepage now reads:
+- Current WIF balance held by the Armory contract.
+- Total Armory `Rewarded` event payouts during the trailing 7-day window.
+- Estimated runway using the observed daily payout rate.
 
-`runway_days = current_armory_WIF_balance / average_daily_armory_reward_payout_WIF`
+`runway_days = current_armory_WIF_balance / (armory_WIF_paid_over_last_7_days / 7)`
 
-For a conservative estimate, use a rolling 7-day and 30-day average, report the measurement window and block/time, and account for any operator top-ups separately. The on-chain 10 WIF per-wallet daily cap is a maximum limit, **not** an estimate of actual daily pool outflow.
+The estimate displays as unavailable when there have been no Armory payouts in the observation window. It is a backward-looking estimate, not a guarantee of future reward availability. The 10 WIF per-wallet daily cap is a maximum limit, **not** an estimate of actual daily outflow.
 
-### What would make it a real flywheel?
+### What is still trusted / future work
 
-A future design could route a clearly specified share of eligible Game fees into the same reward reserve that pays verified player rewards, with on-chain accounting, explicit reserve limits, and transparent refill rules. That requires a reviewed contract change and deployment; do not imply it exists today.
+The ranked pool accounting and settlement are on-chain. Gameplay scoring is not fully trustless: the run API deterministically replays submitted moves and signs eligible scores. At this stage, this is a practical anti-tampering layer because the contract accepts a score only with a valid signer signature and a per-player nonce, rather than trusting a browser-submitted score. The trade-off is trust in the replay service and signer key.
 
----
+Planned decentralization: publish replay inputs and deterministic rules, support independent replay verification, add a challenge/dispute period, and move toward independently verifiable reward claims. Until that work is shipped and deployed, scores remain server-authorized.
 
 ## 7. Security & economy limitations
 
