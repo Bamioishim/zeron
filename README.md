@@ -6,9 +6,9 @@
 > - **Play:** https://zeron-game.vercel.app
 > - **Network:** Robinhood Chain mainnet · chain ID `4663`
 > - **Token:** WIF · `0x5173b8eA6923c2d40267890D45C46a3480954773`
-> - **Live ranked flywheel:** ranked entries and daily-item purchases pay WIF fees; 80% enters that day's on-chain Game prize pool; after the day ends, anyone can settle the pool to the top ranked player. Players return to compete again, generating the next day's entry and item fees. No invented emissions: the prize is funded by actual player spend. Armory kill/level rewards are a separate prefunded pool.
+> - **Ranked prize pool:** ranked entries and daily-item purchases pay WIF fees; 80% enters that day's on-chain Game prize pool. After the day ends, anyone can settle it to the top ranked player. This is a ranked prize loop, not an Armory funding loop.
 > - **Live proof metrics:** the homepage now reads named wallets, 7-day returning players, recorded runs, EIP-7702 batches, prize-pool inflows and payouts, Armory balance, and estimated Armory reward runway directly from Robinhood Chain events. These are live counters, not practice-mode estimates.
-> - **Economy limits:** 0.2 WIF per standard sponsored batch; 10 WIF per-wallet daily Armory reward cap; reward pools are finite and have no automatic top-up.
+> - **Economy limits:** 0.2 WIF per standard sponsored batch; the last documented production Armory cap is 10 WIF per wallet/day (the Solidity constructor default is 150 WIF, so verify the live `dailyCap()` getter); reward pools are finite.
 >
 > **Status honesty:** mainnet contracts and WIF-denominated economy actions are deployed. The demo's combat footage is practice-mode footage. Do not treat simulated HUD rewards as paid on-chain rewards. Retention and economy metrics shown on the live homepage are derived from public mainnet events.
 
@@ -41,6 +41,16 @@ The production frontend reads its network and contract configuration from `app/s
 | Treasury / deployer | [`0x2bCEc454514201d867982ecDE9766DC2ed87958E`](https://robinhoodchain.blockscout.com/address/0x2bCEc454514201d867982ecDE9766DC2ed87958E) |
 
 The old testnet deployment used chain ID `46630` and MockWIF. It is historical only and must not be used for production transactions: https://wif-depths-5ak1srszj-bamioishim.vercel.app
+
+## Armory rewards: team-funded for now
+
+The Armory reward pool is **not self-sustaining**. The deployed `ZeronArmory` source has no fee-split setter or automatic route from weapon/ammo purchases into the reward pool. Purchases pass through `_takeFee()`; the retained amount is sent to the treasury. The `burnBps` setting controls the destroyed share, not reward funding. **0% of weapon/ammo fees is currently routed to Armory rewards.**
+
+- **Live pool balance:** [Read the WIF balance held by the Armory on Blockscout](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7?tab=token_transfers). The balance is live; we do not hard-code a stale snapshot here.
+- **Reward cap:** the last production verification recorded 10 WIF per wallet/day. The Solidity constructor default is 150 WIF and the owner can change it with `setCap`; use the live `dailyCap()` getter as the source of truth before quoting the production cap.
+- **Runway:** the homepage's Armory runway metric uses current pool balance divided by average Armory payouts over the trailing seven days. If there were no payouts in that window, runway is unavailable rather than an invented number. The daily cap is a maximum, not expected daily outflow.
+- **Top-up policy:** the team reviews the pool every Monday. If the live balance is below 30 days of payouts at the trailing-seven-day average, the team tops it back up to that 30-day target. This is an operational treasury commitment, not an on-chain automatic refill. Rewards remain subject to available funds.
+- **Funding source:** treasury transfers only. Weapon and ammo fees do not feed the pool. Do not describe Armory rewards as a self-sustaining flywheel unless fee routing is deployed and verified on-chain.
 
 ## How WIF and gas work
 
@@ -82,6 +92,21 @@ The remaining share is routed according to the specific contract. In particular,
 Play-to-earn rewards come from the separate prefunded Armory pool. They are not minted, are scaled by the mainnet reward setting, are limited by the on-chain daily cap, and stop when the pool runs out. The Game prize pool does not automatically refill the Armory pool. There is no automatic replenishment mechanism in the current deployment; an authorized operator must fund the Armory contract. Rewards are not guaranteed income.
 
 For the detailed per-function flows, current settings, and read-only verification commands, see [the tokenomics guide](docs/TOKENOMICS.md).
+
+## Verifiable scoring and current trust boundary
+
+The run API replays the submitted event log using the shared deterministic game engine before signing a result. Anyone can independently repeat that replay with [`app/tools/verify-run.ts`](app/tools/verify-run.ts):
+
+```bash
+cd app
+npm run verify:run -- ./run.json
+```
+
+The input JSON must include the signed run's player, signer, verifying contract, chain ID, nonce, deadline, signature, event log, and the run-start gameplay snapshot (gear, weapon, ammo, plus day/loadout for daily runs or level/salt for level runs). The verifier recomputes the result and checks the EIP-712 signature.
+
+The contracts also enforce EIP-712 signatures: `WifDepths.recordRun` checks the Run signature; `WifQuest.recordClear` and `WifQuestEndgame.recordClear` check Clear signatures; and `WifQuest.resolve` checks the Duel signature before resolving a PvP stake. These checks prevent arbitrary unsigned claims, but they do **not** remove trust in the authorized signer.
+
+**Known limitation:** the level salt is currently client-influenced. A server commitment published at run start and a later seed reveal are not yet implemented. Scoring therefore still relies on one authorized signer today. The replay logic is open and independently reproducible; multi-signer verification and a committed-seed start/reveal flow are the next decentralization steps. This is not fully decentralized scoring.
 
 ## How the app is built
 
