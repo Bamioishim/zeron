@@ -243,10 +243,15 @@ function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me:
         <button className="btn lime big op-cta" onClick={() => onEnter('world')}>Enter the Depths ▸</button>
         <div className="fine op-who">{name ? <>Playing as <b>@{name}</b></> : <>Wallet ready · {short(me)}</>} · 0 ETH needed, gas is on Zeron</div>
         <div className="op-stats">
-          <div><b className="limet">{stats.burned === undefined ? '…' : fmt(stats.burned)}</b><span>WIF destroyed by fees</span></div>
-          <div><b>{n(stats.players)}</b><span>players</span></div>
-          <div><b>{n(stats.clears)}</b><span>levels cleared</span></div>
-          <div className="op-live">● live on-chain</div>
+          <div><b>{n(stats.players)}</b><span>named wallets · on-chain</span></div>
+          <div><b>{n(stats.returning7d)}</b><span>returning players · 7d</span></div>
+          <div><b>{n(stats.runs7d)}</b><span>recorded runs · 7d</span></div>
+          <div><b>{stats.prizePoolFunded7d === undefined ? '…' : fmt(stats.prizePoolFunded7d)}</b><span>WIF into prize pool · 7d</span></div>
+          <div><b>{stats.prizesPaid7d === undefined ? '…' : fmt(stats.prizesPaid7d)}</b><span>WIF prizes paid · 7d</span></div>
+          <div><b>{stats.armoryBalance === undefined ? '…' : fmt(stats.armoryBalance)}</b><span>WIF in Armory rewards</span></div>
+          <div><b>{stats.armoryRunwayDays == null ? '—' : stats.armoryRunwayDays.toFixed(1) + 'd'}</b><span>Armory runway · 7d payout rate</span></div>
+          <div><b className="limet">{stats.burned === undefined ? '…' : fmt(stats.burned)}</b><span>WIF sent to dead addresses</span></div>
+          <div className="op-live">● live mainnet data</div>
         </div>
         <div className="op-steps">
           <div><i>1</i><b>Claim @name</b><span>free, your on-chain identity</span></div>
