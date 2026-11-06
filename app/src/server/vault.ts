@@ -18,7 +18,7 @@ const err = (status: number, msg: string, extra: any = {}) => Object.assign(new 
 
 // tiny in-memory store for local tests (no BLOB token)
 const mem = new Map<string, string>()
-const usesMemoryStore = () => !process.env.BLOB_READ_WRITE_TOKEN
+const usesMemoryStore = () => process.env.NODE_ENV !== 'production' && !process.env.BLOB_READ_WRITE_TOKEN
 async function load(n: string): Promise<Rec | null> {
   if (usesMemoryStore()) { const s = mem.get(path(n)); return s ? JSON.parse(s) : null }
   const r = await get(path(n), { access: 'private', useCache: false } as any).catch(() => null) as any
