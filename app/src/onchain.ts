@@ -53,7 +53,7 @@ void gameAbi
 export async function arsenalOf(who: string) {
   const A = (D as any).armory as Hex | undefined; if (!A) return null
   try {
-    const [r, allow] = await Promise.all([pub.readContract({ address: A, abi: armoryAbi, functionName: 'arsenal', args: [who as Hex] }) as Promise<any>, pub.readContract({ address: D.wif as Hex, abi: wifAbi, functionName: 'allowance', args: [who as Hex, A] }) as Promise<bigint>])
-    return { a: { mask: Number(r[0]), eq: Number(r[1]), ammo: Number(r[2]), earnedToday: r[3] as bigint }, allow }
+    const [r, allow, dailyCap] = await Promise.all([pub.readContract({ address: A, abi: armoryAbi, functionName: 'arsenal', args: [who as Hex] }) as Promise<any>, pub.readContract({ address: D.wif as Hex, abi: wifAbi, functionName: 'allowance', args: [who as Hex, A] }) as Promise<bigint>, pub.readContract({ address: A, abi: armoryAbi, functionName: 'dailyCap' }) as Promise<bigint>])
+    return { a: { mask: Number(r[0]), eq: Number(r[1]), ammo: Number(r[2]), earnedToday: r[3] as bigint }, allow, dailyCap }
   } catch { return null }
 }
