@@ -1,72 +1,72 @@
 # Zeron
 
-**Zeron is a top-down pixel dungeon game built around World is Flat ($WIF) on Robinhood Chain.** Players explore a town, fight through dungeon levels, challenge arena opponents, craft gear, buy items, and send WIF to other players by their \`@name\`.
+**Zeron is a top-down pixel dungeon game built around World is Flat ($WIF) on Robinhood Chain.** Players explore a town, fight through dungeon levels, challenge arena opponents, craft gear, buy items, and send WIF to other players by their `@name`.
 
 - **Play:** https://zeron-game.vercel.app
 - **Network:** Robinhood Chain mainnet
-- **Chain ID:** \`4663\`
+- **Chain ID:** `4663`
 - **Explorer:** https://robinhoodchain.blockscout.com
-- **Project token:** \`0x5173b8eA6923c2d40267890D45C46a3480954773\`
+- **Project token:** `0x5173b8eA6923c2d40267890D45C46a3480954773`
 
 > **Important:** Zeron uses the World is Flat token at the address above. It is not Solana dogwifhat and it is not the old testnet MockWIF contract.
 
 ## What players can do
 
 1. **Create a game wallet.** Zeron creates a wallet in the browser. Players do not need to connect MetaMask or Phantom or hold ETH.
-2. **Claim an identity.** Claim a unique \`@name\`. The first name claim is free.
+2. **Claim an identity.** Claim a unique `@name`. The first name claim is free.
 3. **Explore and fight.** Move around the town, enter the dungeon, fight enemies and bosses, and save level progress.
 4. **Build a character.** Buy weapons, refill ammo, collect items, craft upgrades, and equip costumes.
 5. **Compete.** Enter the daily ranked run and challenge players or NPCs in the arena.
-6. **Use WIF socially.** Send WIF to another player by their \`@name\`.
+6. **Use WIF socially.** Send WIF to another player by their `@name`.
 
 Free movement and combat are handled in the browser. Economy actions and saved progress use the deployed smart contracts.
 
 ## Mainnet token and contracts
 
-The production frontend reads its network and contract configuration from \`app/src/shared/deployments.json\`.
+The production frontend reads its network and contract configuration from `app/src/shared/deployments.json`.
 
 | Contract | Address |
 |---|---|
-| World is Flat (WIF) token | [\`0x5173b8eA6923c2d40267890D45C46a3480954773\`](https://robinhoodchain.blockscout.com/address/0x5173b8eA6923c2d40267890D45C46a3480954773) |
-| Game | [\`0x7a9b811C490F4F089f63bC6001d801216846Fbd8\`](https://robinhoodchain.blockscout.com/address/0x7a9b811C490F4F089f63bC6001d801216846Fbd8) |
-| Quest | [\`0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451\`](https://robinhoodchain.blockscout.com/address/0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451) |
-| Quest endgame | [\`0xDC9100bDFfC996e509b0e49934aF006785887Fa6\`](https://robinhoodchain.blockscout.com/address/0xDC9100bDFfC996e509b0e49934aF006785887Fa6) |
-| Name registry | [\`0x4A09d12912dA069687Ce1F568908D18409Eb3B63\`](https://robinhoodchain.blockscout.com/address/0x4A09d12912dA069687Ce1F568908D18409Eb3B63) |
-| Shop | [\`0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE\`](https://robinhoodchain.blockscout.com/address/0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE) |
-| Armory | [\`0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7\`](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7) |
-| EIP-7702 account implementation | [\`0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392\`](https://robinhoodchain.blockscout.com/address/0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392) |
-| Relayer | [\`0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a\`](https://robinhoodchain.blockscout.com/address/0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a) |
-| Treasury / deployer | [\`0x2bCEc454514201d867982ecDE9766DC2ed87958E\`](https://robinhoodchain.blockscout.com/address/0x2bCEc454514201d867982ecDE9766DC2ed87958E) |
+| World is Flat (WIF) token | [`0x5173b8eA6923c2d40267890D45C46a3480954773`](https://robinhoodchain.blockscout.com/address/0x5173b8eA6923c2d40267890D45C46a3480954773) |
+| Game | [`0x7a9b811C490F4F089f63bC6001d801216846Fbd8`](https://robinhoodchain.blockscout.com/address/0x7a9b811C490F4F089f63bC6001d801216846Fbd8) |
+| Quest | [`0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451`](https://robinhoodchain.blockscout.com/address/0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451) |
+| Quest endgame | [`0xDC9100bDFfC996e509b0e49934aF006785887Fa6`](https://robinhoodchain.blockscout.com/address/0xDC9100bDFfC996e509b0e49934aF006785887Fa6) |
+| Name registry | [`0x4A09d12912dA069687Ce1F568908D18409Eb3B63`](https://robinhoodchain.blockscout.com/address/0x4A09d12912dA069687Ce1F568908D18409Eb3B63) |
+| Shop | [`0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE`](https://robinhoodchain.blockscout.com/address/0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE) |
+| Armory | [`0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7`](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7) |
+| EIP-7702 account implementation | [`0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392`](https://robinhoodchain.blockscout.com/address/0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392) |
+| Relayer | [`0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a`](https://robinhoodchain.blockscout.com/address/0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a) |
+| Treasury / deployer | [`0x2bCEc454514201d867982ecDE9766DC2ed87958E`](https://robinhoodchain.blockscout.com/address/0x2bCEc454514201d867982ecDE9766DC2ed87958E) |
 
-The old testnet deployment used chain ID \`46630\` and MockWIF. It is historical only and must not be used for production transactions: https://wif-depths-5ak1srszj-bamioishim.vercel.app
+The old testnet deployment used chain ID `46630` and MockWIF. It is historical only and must not be used for production transactions: https://wif-depths-5ak1srszj-bamioishim.vercel.app
 
 ## How WIF and gas work
 
 Players do not need ETH. Zeron uses an EIP-7702 delegated account and a relayer that submits approved, player-signed batches and pays the network gas in ETH.
 
 A **standard sponsored batch costs 0.2 WIF**:
-- **0.1 WIF** is transferred to the dead address: \`0x000000000000000000000000000000000000dEaD\`.
+- **0.1 WIF** is transferred to the dead address: `0x000000000000000000000000000000000000dEaD`.
 - **0.1 WIF** is transferred to the relayer to reimburse the sponsor.
 
-The starter grant and the player's first \`@name\` claim are free-onboarding exceptions. Other sponsored batches require the WIF gas fee. The account contract enforces a maximum of **20 sponsored batches per player per day**; the relayer can impose a lower operational limit or pause sponsorship.
+The starter grant and the player's first `@name` claim are free-onboarding exceptions. Other sponsored batches require the WIF gas fee. The account contract enforces a maximum of **20 sponsored batches per player per day**; the relayer can impose a lower operational limit or pause sponsorship.
 
 ### Fee destruction is not native token burning
 
-The deployed FeeSink contracts use \`useBurn = false\`. Their configured fee share is transferred to the dead address. This removes those tokens from practical circulation, but **does not reduce WIF total supply** through the token's native \`burn()\` function.
+The deployed FeeSink contracts use `useBurn = false`. Their configured fee share is transferred to the dead address. This removes those tokens from practical circulation, but **does not reduce WIF total supply** through the token's native `burn()` function.
 
 Current mainnet fee shares:
 - Game and Quest: **20%** to the dead address.
 - Names, Shop, and Armory: **50%** to the dead address.
 - PvP stake resolution: **10%** to the dead address.
 
-The remaining share is routed to the relevant prize pool, contract balance, or treasury depending on the action. The on-chain setting \`burnVerified\` remains \`false\`. Zeron must not be described as using native token burning unless that configuration is deliberately changed and verified.
+The remaining share is routed to the relevant prize pool, contract balance, or treasury depending on the action. The on-chain setting `burnVerified` remains `false`. Zeron must not be described as using native token burning unless that configuration is deliberately changed and verified.
 
 ### Mainnet economy snapshot
 
 | Action | Current amount |
 |---|---:|
 | One-time starter grant | 5 WIF |
-| First \`@name\` claim | Free |
+| First `@name` claim | Free |
 | Rename | 5 WIF |
 | Ranked entry | 10 WIF |
 | Daily-run items | 2.5 / 4 / 4 WIF |
@@ -85,12 +85,12 @@ For the detailed per-function flows, current settings, and read-only verificatio
 
 | Area | Technology and responsibility |
 |---|---|
-| \`app/\` | React, Vite, TypeScript, viem. Browser game, wallet, UI, and client-side transaction preparation. |
-| \`app/api/\` | Vercel serverless endpoints for relaying transactions, signing run results, and PIN/recovery vault operations. |
-| \`app/src/server/\` | TypeScript source for server-side relay and signing logic. |
-| \`contracts/\` | Solidity smart contracts and Foundry deployment/test scripts. |
-| \`docs/\` | Tokenomics, maintainer notes, demo media, and social copy. |
-| \`brand/\`, \`deploy-assets/\` | Project identity and visual assets. |
+| `app/` | React, Vite, TypeScript, viem. Browser game, wallet, UI, and client-side transaction preparation. |
+| `app/api/` | Vercel serverless endpoints for relaying transactions, signing run results, and PIN/recovery vault operations. |
+| `app/src/server/` | TypeScript source for server-side relay and signing logic. |
+| `contracts/` | Solidity smart contracts and Foundry deployment/test scripts. |
+| `docs/` | Tokenomics, maintainer notes, demo media, and social copy. |
+| `brand/`, `deploy-assets/` | Project identity and visual assets. |
 
 The browser creates and stores the player's local wallet key. The player signs the exact transaction batch; the relayer cannot change the signed calls. The relay endpoint allowlists contract calls and checks sponsorship rules before submitting them.
 
@@ -106,65 +106,65 @@ The run API deterministically replays submitted gameplay and signs eligible resu
 
 ### Frontend
 
-\`\`\`bash
+```bash
 cd app
 npm install
 npm run dev
-\`\`\`
+```
 
 Vite serves the app locally (normally at http://localhost:5173).
 
 Useful app scripts:
 
-\`\`\`bash
+```bash
 npm run build
 npm run lint
 npm run preview
-\`\`\`
+```
 
 ### Smart contracts
 
-The Foundry dependencies are not committed. Install them from the \`contracts/\` directory, then build and test:
+The Foundry dependencies are not committed. Install them from the `contracts/` directory, then build and test:
 
-\`\`\`bash
+```bash
 cd contracts
 forge install foundry-rs/forge-std OpenZeppelin/openzeppelin-contracts
 forge build
 forge test
-\`\`\`
+```
 
-The mainnet deployment script is \`contracts/script/DeployMainnet.s.sol\`. It expects deployment inputs from the environment. Do not run a deployment script against mainnet unless you are intentionally deploying contracts with the required owner/deployer authority and have reviewed every address and parameter.
+The mainnet deployment script is `contracts/script/DeployMainnet.s.sol`. It expects deployment inputs from the environment. Do not run a deployment script against mainnet unless you are intentionally deploying contracts with the required owner/deployer authority and have reviewed every address and parameter.
 
 The end-to-end mainnet script can spend real WIF. Only run it with a dedicated test wallet and an explicit test budget.
 
 ## Vercel configuration
 
-The Vercel project is connected to this GitHub repository and serves the app from the \`app/\` root directory. Pushes to non-production branches create preview deployments; the \`main\` branch is the production release branch.
+The Vercel project is connected to this GitHub repository and serves the app from the `app/` root directory. Pushes to non-production branches create preview deployments; the `main` branch is the production release branch.
 
 The following environment variable **names** are used by the app. Their values belong in Vercel's encrypted environment settings, never in Git:
 
 | Variable | Purpose |
 |---|---|
-| \`RELAYER_KEY\` | Relayer wallet private key used to pay ETH gas. |
-| \`RUN_SIGNER_KEY\` | Key used to sign verified run/reward messages. |
-| \`RPC_URL\` | Optional Robinhood Chain RPC override. |
-| \`SPONSOR_DAILY_CAP\` | Optional relayer-side sponsored-batch cap; cannot exceed the on-chain cap. |
-| \`SPONSOR_MIN_BALANCE_WEI\` | Relayer ETH balance floor. Code default is \`20000000000000\` wei if unset. |
-| \`SPONSOR_PAUSED\` | Set to \`true\` to pause sponsored transactions. |
-| \`DEPLOYMENTS_OVERRIDE\` | Optional JSON override for network/contract configuration. |
-| \`BLOB_READ_WRITE_TOKEN\` | Vercel Blob access for persistent encrypted PIN/recovery vault records. |
+| `RELAYER_KEY` | Relayer wallet private key used to pay ETH gas. |
+| `RUN_SIGNER_KEY` | Key used to sign verified run/reward messages. |
+| `RPC_URL` | Optional Robinhood Chain RPC override. |
+| `SPONSOR_DAILY_CAP` | Optional relayer-side sponsored-batch cap; cannot exceed the on-chain cap. |
+| `SPONSOR_MIN_BALANCE_WEI` | Relayer ETH balance floor. Code default is `20000000000000` wei if unset. |
+| `SPONSOR_PAUSED` | Set to `true` to pause sponsored transactions. |
+| `DEPLOYMENTS_OVERRIDE` | Optional JSON override for network/contract configuration. |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob access for persistent encrypted PIN/recovery vault records. |
 
-Without \`BLOB_READ_WRITE_TOKEN\`, the vault falls back to in-memory storage. That is suitable for local development, not persistent production recovery.
+Without `BLOB_READ_WRITE_TOKEN`, the vault falls back to in-memory storage. That is suitable for local development, not persistent production recovery.
 
 ## Security and known limitations
 
-- Never commit \`.env\`, private keys, wallet exports, Vercel tokens, or Blob credentials.
+- Never commit `.env`, private keys, wallet exports, Vercel tokens, or Blob credentials.
 - The player's private key is created in the browser. PIN/recovery vault records store encrypted wallet ciphertext and one-way verifiers, not plaintext PINs or answers.
 - The relayer is trusted to submit allowlisted batches and pay gas. The run signer is trusted to validate and sign gameplay results.
 - Reward and starter pools are finite. A displayed reward is not a promise that the pool will always have funds.
 - The game uses a client-influenced level salt; ranked scoring also relies on server-side replay and signatures.
 - Auto-Hunt is not available on the current mainnet deployment. Armory item ID 8 has no configured sale price and is not offered in the shop.
-- The current destruction model sends configured fee shares to the dead address. It does not call the token's native \`burn()\` function.
+- The current destruction model sends configured fee shares to the dead address. It does not call the token's native `burn()` function.
 
 ## Demo and project documentation
 
