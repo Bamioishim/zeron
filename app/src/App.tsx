@@ -254,10 +254,11 @@ function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me:
           <div className="op-live">● live mainnet data</div>
         </div>
         <div className="op-steps">
-          <div><i>1</i><b>Claim @name</b><span>free, your on-chain identity</span></div>
-          <div><i>2</i><b>Fight</b><span>real-time: block, parry, strike</span></div>
-          <div><i>3</i><b>Destroy WIF</b><span>fee shares go to the dead address; gas is paid in WIF</span></div>
+          <div><i>1</i><b>Compete</b><span>Enter ranked runs and buy daily items with WIF.</span></div>
+          <div><i>2</i><b>Pool grows</b><span>80% of ranked-entry and daily-item fees fund that day's prize pool.</span></div>
+          <div><i>3</i><b>Winner gets paid</b><span>After the day ends, anyone can settle the pool to the top ranked player. Then the next contest begins.</span></div>
         </div>
+        <p className="fine">Armory play rewards are separate. They are paid from a finite prefunded WIF balance, not from the ranked prize pool. The runway above uses its live balance and observed 7-day payouts.</p>
         <div className="op-links"><button className="linkbtn" onClick={() => onEnter('how')}>How it works</button> · <button className="linkbtn" onClick={() => onEnter('board')}>Leaderboard</button> · <button className="linkbtn" onClick={() => onEnter('burn')}>Destroyed tracker</button></div>
       </div>
       <div className="op-foot">Created by Bamio for the World is Flat hackathon</div>
