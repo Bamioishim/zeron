@@ -18,16 +18,16 @@ const err = (status: number, msg: string, extra: any = {}) => Object.assign(new 
 
 // tiny in-memory store for local tests (no BLOB token)
 const mem = new Map<string, string>()
-const useMem = () => !process.env.BLOB_READ_WRITE_TOKEN
+const usesMemoryStore = () => !process.env.BLOB_READ_WRITE_TOKEN
 async function load(n: string): Promise<Rec | null> {
-  if (useMem()) { const s = mem.get(path(n)); return s ? JSON.parse(s) : null }
+  if (usesMemoryStore()) { const s = mem.get(path(n)); return s ? JSON.parse(s) : null }
   const r = await get(path(n), { access: 'private', useCache: false } as any).catch(() => null) as any
   if (!r || r.statusCode !== 200) return null
   return JSON.parse(await new Response(r.stream).text())
 }
 async function save(n: string, rec: Rec) {
   const body = JSON.stringify(rec)
-  if (useMem()) { mem.set(path(n), body); return }
+  if (usesMemoryStore()) { mem.set(path(n), body); return }
   await put(path(n), body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 60 } as any)
 }
 const ownerOf = async (n: string) => getAddress(await pub().readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }) as Hex)
