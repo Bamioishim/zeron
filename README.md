@@ -1,15 +1,16 @@
 # Zeron
 
-**Zeron is a top-down pixel dungeon game built around World is Flat ($WIF) on Robinhood Chain.** Players explore a town, fight through dungeon levels, challenge arena opponents, craft gear, buy items, and send WIF to other players by their `@name`.
+**Zeron is a daily pixel dungeon game built around the real World is Flat ($WIF) token on Robinhood Chain.** Players claim an `@name`, explore dungeons, fight, compete in ranked runs, buy gear, and send WIF to other players.
 
-- **Play:** https://zeron-game-sigma.vercel.app
-- **Access:** production is public; Vercel SSO remains enabled for preview deployments only.
-- **Network:** Robinhood Chain mainnet
-- **Chain ID:** `4663`
-- **Explorer:** https://robinhoodchain.blockscout.com
-- **Project token:** `0x5173b8eA6923c2d40267890D45C46a3480954773`
-
-> **Important:** Zeron uses the World is Flat token at the address above. It is not Solana dogwifhat and it is not the old testnet MockWIF contract.
+> **At a glance**
+> - **Play:** https://zeron-game-sigma.vercel.app
+> - **Network:** Robinhood Chain mainnet · chain ID `4663`
+> - **Token:** WIF · `0x5173b8eA6923c2d40267890D45C46a3480954773`
+> - **Core loop today:** players spend WIF on ranked entries and game items; 80% of ranked-entry and daily-item fees stay in the Game contract's daily prize pool. Separately, Armory play rewards are paid from a prefunded Armory balance. **These are separate pools, so the current deployment is not yet a self-replenishing fee-to-reward flywheel.**
+> - **On-chain traction:** no independently verified player, retention, or gameplay-volume figures are published in this repository yet. The current demo includes local practice footage and does not prove live gameplay transactions.
+> - **Economy limits:** 0.2 WIF per standard sponsored batch; 10 WIF per-wallet daily Armory reward cap; reward pools are finite and have no automatic top-up.
+>
+> **Status honesty:** mainnet contracts and WIF-denominated economy actions are deployed. The demo's combat footage is practice-mode footage. Do not treat simulated HUD rewards as paid on-chain rewards or claim retention/traction without measured data.
 
 ## What players can do
 
@@ -60,7 +61,7 @@ Current mainnet fee shares:
 - Names, Shop, and Armory: **50%** to the dead address.
 - PvP stake resolution: **10%** to the dead address.
 
-The remaining share is routed to the relevant prize pool, contract balance, or treasury depending on the action. The on-chain setting `burnVerified` remains `false`. Zeron must not be described as using native token burning unless that configuration is deliberately changed and verified.
+The remaining share is routed according to the specific contract. In particular, Game ranked-entry and daily-item fees retain 80% in the Game contract's daily prize pool; this does not automatically fund the separate Armory reward pool. The on-chain setting `burnVerified` remains `false`. Zeron must not be described as using native token burning unless that configuration is deliberately changed and verified.
 
 ### Mainnet economy snapshot
 
@@ -78,7 +79,7 @@ The remaining share is routed to the relevant prize pool, contract balance, or t
 | Costumes | 6–15 WIF |
 | Armory reward cap | 10 WIF per wallet per day |
 
-Play-to-earn rewards come from the prefunded Armory pool. They are not minted, are scaled by the mainnet reward setting, are limited by the on-chain daily cap, and stop when the pool runs out. They are not guaranteed income.
+Play-to-earn rewards come from the separate prefunded Armory pool. They are not minted, are scaled by the mainnet reward setting, are limited by the on-chain daily cap, and stop when the pool runs out. The Game prize pool does not automatically refill the Armory pool. There is no automatic replenishment mechanism in the current deployment; an authorized operator must fund the Armory contract. Rewards are not guaranteed income.
 
 For the detailed per-function flows, current settings, and read-only verification commands, see [the tokenomics guide](docs/TOKENOMICS.md).
 
@@ -95,7 +96,7 @@ For the detailed per-function flows, current settings, and read-only verificatio
 
 The browser creates and stores the player's local wallet key. The player signs the exact transaction batch; the relayer cannot change the signed calls. The relay endpoint allowlists contract calls and checks sponsorship rules before submitting them.
 
-The run API deterministically replays submitted gameplay and signs eligible results. This is a server-trusted scoring design, not a fully trustless game engine.
+The run API deterministically replays submitted gameplay and signs eligible results. This is server-trusted scoring, not a fully trustless game engine. For the current stage, replay validation is a practical anti-tampering layer: it prevents the browser from simply declaring an arbitrary score and makes reward eligibility depend on a server-checked replay. The trade-off is explicit trust in the run service and signing key. The planned decentralization path is to publish replay inputs and deterministic rules, move validation to independently reproducible verifiers, and ultimately make reward claims verifiable on-chain or through a challenge window. Until then, scores and signatures remain server-authorized.
 
 ## Run locally
 
@@ -177,7 +178,7 @@ Without `BLOB_READ_WRITE_TOKEN`, the vault falls back to in-memory storage. That
 - [Maintainer handover](HANDOVER.md)
 - [Four-post X thread copy](docs/SOCIAL-THREAD.md)
 
-The demo combines public-site interface footage with local practice-mode gameplay footage. Practice footage is labelled as local practice and does not show real on-chain gameplay transactions or prove token transfers.
+The demo combines public-site interface footage with local practice-mode gameplay footage. Practice footage is labelled as local practice and does not show real on-chain gameplay transactions or prove token transfers. No wallet-creation, batch-count, WIF-volume, or daily-returning-player metrics are currently published here because verified measurements have not been supplied.
 
 ## Art and audio credits
 
