@@ -195,26 +195,27 @@ Solana funding address used for the Nov 1 bridge (`9TKr9SV2BkG9V6KFurcdCFQzFH4zT
 
 ---
 
-## 7. Security & economy limitations (honest)
+## 7. Security & economy limitations
 
-- Relayer is trusted for allowlisting and meta-tx submission; run/reward signatures are server-trusted.
-- `SPONSOR_*` env kill-switches are operational, not on-chain guarantees beyond `WifAccount` daily sponsored cap.
-- PIN vault stores ciphertext + verifiers (Vercel Blob when configured); never paste keys into chat or commit `.env`.
-- Finite reward / starter pools: empty pool ⇒ no payout (claims clamp / revert per code paths).
-- UI/docs drift still present in places (e.g. some strings still say **150 WIF/day** or **Claim 350 WIF** while live `dailyCap=10` and `starterAmount=5`). Prefer this file + on-chain reads.
-- Auto-Hunt UI tries armory id **8** at **100 WIF**, but live `price(8)=0` (not for sale on-chain).
-- Level salt is client-influenced; ranked anti-cheat is server-trusted.
+- The relayer is trusted to enforce its allowlist, apply operational limits, and submit sponsored batches. The run signer is trusted to replay and sign gameplay results.
+- `SPONSOR_*` environment settings are operational controls. The EIP-7702 account contract independently enforces its hard cap of 20 sponsored batches per player per day.
+- The PIN vault stores encrypted wallet ciphertext and one-way verifiers. With no `BLOB_READ_WRITE_TOKEN`, the API falls back to in-memory storage, which is not persistent.
+- Starter and reward pools are finite. A reward is paid only while the relevant pool has funds; rewards are not guaranteed income.
+- The level salt is client-influenced. Ranked scoring relies on server-side replay and signatures rather than a fully trustless execution model.
+- Armory item ID 8 (Auto-Hunt) has no configured mainnet sale price. The app no longer offers it in the shop or exposes its toggle.
+- The displayed FeeSink destruction total does not include the separate 0.1 WIF gas-fee transfers to the dead address.
 
 ---
 
-## 8. Known remaining work (docs / ops — not feature expansion)
+## 8. Operational decisions and remaining caveats
 
-- Demo video / capture for the World is Flat hackathon (submissions close **Thu 12 Nov 2026, 18:30 WAT**; stay live through **16 Nov**).
-- Keep relayer ETH topped up if auto-pause trips.
-- Optional: flip FeeSinks to native `burn()` only after a deliberate verification plan (`burnVerified` stays false until then).
-- Fix stale UI copy (daily cap, starter button label) in a future code PR—not done in this docs-only change.
-- `@bamio` vault may still be legacy without recovery question (see HANDOVER).
-- Connect GitHub → Vercel for auto-deploy when ready.
+- Native token `burn()` is not enabled for Zeron FeeSinks. `burnVerified` remains `false`; do not change the setting without a reviewed verification, owner-authorized configuration change, and post-change supply check.
+- Sponsorship depends on the relayer's ETH balance, its configured environment limits, and the manual pause switch. Check the live Vercel configuration and current chain balance rather than relying on an old balance snapshot.
+- The on-chain sponsored-batch ceiling is 20 per player/day. The relayer may apply a lower cap.
+- The starter and reward pools are prefunded. There is no automatic top-up implied by the contracts.
+- Contract configuration changes require the authorized owner/deployer. Private keys must remain outside the repository.
+- Auto-Hunt remains unavailable until Armory item ID 8 is deliberately configured and tested on-chain.
+
 
 ---
 
@@ -252,7 +253,7 @@ Reviewed desktop demo (real screen recordings only; final videoReview **PASS**):
 
 Production at https://zeron-game.vercel.app has contracts deployed, so Play prompts `@name`. For **local practice footage only**, the existing app path `deployed === false` was used by supplying blank `wif` / `game` / `names` / `accountImpl` through the already-supported **`VITE_DEPLOYMENTS`** override (see `app/src/shared/chain.ts`). That shows the in-app banner **“Contracts aren't live yet, so this is practice mode.”** Onboarding/`act()` returns early—**no** account claim, login, payment, signatures, or mainnet writes. UI earn popups in practice are **simulated only**.
 
-Menus / Burn / How segments in the demo were recorded on the live site (chrome only). Practice segments carry a persistent **LOCAL PRACTICE — NO FUNDS MOVED** overlay. Burn segment overlay: FeeSink destroy → **`0x…dEaD`** (`useBurn=false`) — **not** native `token.burn()` / totalSupply proof. The demo is **not** on-chain transfer proof. Do not invent room counts or HUD WIF totals from OCR.
+Menus / Destroyed tracker / How segments in the demo were recorded on the live site (chrome only). Practice segments carry a persistent **LOCAL PRACTICE — NO FUNDS MOVED** overlay. Burn segment overlay: FeeSink destroy → **`0x…dEaD`** (`useBurn=false`) — **not** native `token.burn()` / totalSupply proof. The demo is **not** on-chain transfer proof. Do not invent room counts or HUD WIF totals from OCR.
 
 ### Controls note
 
