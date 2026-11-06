@@ -283,3 +283,34 @@ Menus / tracker / How segments in the demo were recorded on the live site (chrom
 ### Controls note
 
 Desktop fight keys in the current HUD/handler and updated How-it-works copy: **J** attack · **K** block/parry · **L** weapon special · **Q** potion · **F** finisher · **E** interact · WASD/arrows walk.
+
+
+## 11. Armory funding and published top-up policy
+
+The deployed Armory source has **no fee-split setter and no automatic reward-pool routing**. `ZeronArmory._pay()` calls `_takeFee()`, then transfers the retained amount to `treasury`. The FeeSink `burnBps` parameter only chooses the destroyed share; it does not direct funds to the Armory reward pool. Therefore **0% of weapon and ammo purchase fees currently funds rewards**. The reward pool is team-funded by treasury transfers.
+
+- **Live pool balance:** [Armory contract on Blockscout](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7?tab=tokens). Read the WIF token balance held by this address; do not use an old README snapshot as the current balance.
+- **Cap discrepancy:** the Solidity constructor default in `ZeronArmory.sol` is **150 WIF per wallet per day**, and the owner can change it with `setCap(uint256)`. The latest production changelog records a live cap of **10 WIF per wallet per day**. Until a fresh read of `dailyCap()` is captured, quote 10 WIF as the last verified production setting and 150 WIF only as the source-code default. Do not silently substitute one for the other.
+- **Runway formula:** `current Armory WIF balance / (Armory WIF paid during the last 7 complete days / 7)`. The homepage displays this trailing-seven-day estimate. If there were no payouts in the window, runway is unavailable; do not report infinity or derive daily outflow from the maximum cap.
+- **Treasury top-up schedule:** the team reviews the live balance every Monday. If it is below 30 days of payouts at the trailing-seven-day average, the team tops it up to that 30-day target. This is a published operational commitment, not an automatic contract rule. A top-up is a treasury transfer and must be confirmed on Blockscout.
+- **No self-sustaining claim:** until a new contract implementation routes a documented percentage of weapon/ammo fees into the Armory pool and that implementation is deployed and verified, the Armory reward pool remains team-funded. The current routing percentage is **0%**.
+
+No contract change is recommended for the current release. Changing the immutable deployment architecture or deploying a replacement Armory solely to add fee routing creates migration, ownership, and player-state risks that should be reviewed separately.
+
+## 12. Reproducible run verification and signer trust
+
+The shared real-time replay implementation is `app/src/shared/rt.ts`. The public verifier `app/tools/verify-run.ts` replays a supplied event log and checks the resulting EIP-712 signature:
+
+```bash
+cd app
+npm run verify:run -- ./run.json
+```
+
+The JSON input must include the player, signer, verifying contract, chain ID, nonce, deadline, signature, ordered event log, and the run-start gear/weapon/ammo snapshot. Daily runs also require the day and loadout; level runs require the level and salt. The verifier independently recomputes score/XP or level-clear loot before checking the signature.
+
+The contract source verifies:
+- `WifDepths.recordRun`: EIP-712 `Run` signature, signer and per-player nonce.
+- `WifQuest.recordClear` and `WifQuestEndgame.recordClear`: EIP-712 `Clear` signature, signer and per-player nonce.
+- `WifQuest.resolve`: EIP-712 `Duel` signature from the configured signer before stake resolution.
+
+**Remaining limitation:** level salt is currently supplied by the client. A server-published seed commitment at run start followed by a reveal after the run is **not implemented yet**. The replay algorithm is public and independently reproducible, but scoring still trusts one configured signer. Multi-signer validation and a server-committed seed lifecycle are the next steps; the current system is not fully decentralized.
