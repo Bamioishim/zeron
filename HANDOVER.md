@@ -154,3 +154,14 @@ Do not deploy a preview branch directly to the production domain. Do not run con
 - [X thread copy](docs/SOCIAL-THREAD.md)
 
 The gameplay portion of the demo was recorded in local practice mode and is not evidence of on-chain gameplay transactions or token transfers. The public-site menus and tracker footage show the production interface.
+
+
+## Armory and scoring status (2026-11-06)
+
+- Armory reward pool is team-funded. Weapon/ammo fees do not route into the reward pool (0%); no Armory fee-split setter exists in the deployed source.
+- Review Armory WIF balance every Monday. If it falls below 30 days of payouts at the trailing-seven-day average, treasury should top it up to the 30-day target. Confirm each transfer on Blockscout.
+- Live pool balance: [Armory on Blockscout](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7?tab=tokens). Use the live token holdings view; do not copy a stale number into docs.
+- Cap discrepancy: contract constructor default is 150 WIF/day; last recorded production getter verification is 10 WIF/wallet/day. Check `dailyCap()` on the live contract before changing published figures.
+- `app/tools/verify-run.ts` is the public deterministic replay and EIP-712 verification utility. Run from `app/` with `npm run verify:run -- ./run.json`.
+- Run, Clear, and Duel signatures are checked on-chain in the current contract source.
+- Level salt remains client-influenced. Server seed commitment at run start and reveal after completion are not implemented. Single-signer trust remains; do not describe scoring as decentralized.
