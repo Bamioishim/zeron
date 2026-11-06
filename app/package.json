@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run lint && tsc -b && vite build",
-    "lint": "oxlint --quiet",
+    "build": "npm run lint -- --quiet && tsc -b && vite build",
+    "lint": "oxlint",
     "preview": "vite preview"
   },
   "dependencies": {
