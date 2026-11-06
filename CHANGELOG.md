@@ -4,6 +4,10 @@ This file contains implementation history, testnet context, migration evidence, 
 
 ## 2026-11-06 — submission cleanup
 
+- Clarified that Armory rewards are treasury-funded, with 0% of weapon/ammo fees routed to the pool.
+- Added the manual Monday review / 30-day target top-up policy and retained the live Blockscout balance link.
+- Removed the Armory runway estimate because a dated Blockscout balance snapshot could not be verified for submission.
+
 - Reframed the README around the live game, the actual two-part economy, and evidence-bounded traction claims.
 - Clarified that Armory rewards are funded by manual project-WIF transfers and are not currently self-funded by play.
 - Clarified that weapon fees go to the dead address and treasury, not the Armory reward pool.
