@@ -7,7 +7,7 @@
 > - **Network:** Robinhood Chain mainnet · chain ID `4663`
 > - **Token:** WIF · `0x5173b8eA6923c2d40267890D45C46a3480954773`
 > - **Live ranked flywheel:** ranked entries and daily-item purchases pay WIF fees; 80% enters that day's on-chain Game prize pool; after the day ends, anyone can settle the pool to the top ranked player. Players return to compete again, generating the next day's entry and item fees. No invented emissions: the prize is funded by actual player spend. Armory kill/level rewards are a separate prefunded pool.
-> - **Live proof metrics:** the homepage now reads named wallets, 7-day returning players, recorded runs, EIP-7702 batches, prize-pool inflows and payouts, Armory balance, and estimated Armory reward runway directly from Robinhood Chain events. These are live counters, not practice-mode estimates.
+> - **Live proof metrics:** the homepage now reads named wallets, 7-day returning players, recorded runs, EIP-7702 batches, prize-pool inflows and payouts, Armory balance directly from Robinhood Chain events. These are live counters, not practice-mode estimates.
 > - **Economy limits:** 0.2 WIF per standard sponsored batch; 10 WIF per-wallet daily Armory reward cap; reward pools are finite and have no automatic top-up.
 >
 > **Status honesty:** mainnet contracts and WIF-denominated economy actions are deployed. The demo's combat footage is practice-mode footage. Do not treat simulated HUD rewards as paid on-chain rewards. Retention and economy metrics shown on the live homepage are derived from public mainnet events.
@@ -41,6 +41,18 @@ The production frontend reads its network and contract configuration from `app/s
 | Treasury / deployer | [`0x2bCEc454514201d867982ecDE9766DC2ed87958E`](https://robinhoodchain.blockscout.com/address/0x2bCEc454514201d867982ecDE9766DC2ed87958E) |
 
 The old testnet deployment used chain ID `46630` and MockWIF. It is historical only and must not be used for production transactions: https://wif-depths-5ak1srszj-bamioishim.vercel.app
+
+## Armory rewards: team-funded, not self-sustaining
+
+The Armory reward pool is separate from the ranked Game prize pool. The deployed Armory does not route weapon or ammo fees into rewards: **0% of those fees is sent to the reward pool**. Weapon/ammo fee handling sends the retained share to the treasury, while the configured destruction share goes to the dead address.
+
+- **Live balance:** [View the Armory's WIF token balance on Blockscout](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7?tab=tokens). A dated numeric snapshot is not published here; check the live explorer balance.
+- **Daily cap:** the last verified production setting is 10 WIF per wallet/day. The on-chain `dailyCap()` getter is authoritative and should be rechecked before quoting a current limit.
+- **Funding:** rewards are funded by treasury transfers. The team reviews the pool every Monday and tops it up toward a 30-day target when the balance falls below that target, using the trailing seven-day average payout as the operating reference. This is a manual treasury policy, not an automatic contract refill.
+- **Availability:** rewards are finite and stop when the pool is depleted. No runway estimate is published because a current Blockscout balance snapshot could not be verified for this submission.
+
+Do not describe Armory rewards as a self-sustaining flywheel unless fee routing is deployed and verified on-chain.
+
 
 ## How WIF and gas work
 
@@ -179,7 +191,7 @@ Without `BLOB_READ_WRITE_TOKEN`, the vault falls back to in-memory storage. That
 - [Maintainer handover](HANDOVER.md)
 - [Four-post X thread copy](docs/SOCIAL-THREAD.md)
 
-The repository's existing desktop video still contains local practice-mode combat and must not be submitted as proof of live gameplay. The live app homepage now reads wallet, retention, run, prize-pool, and Armory runway metrics from public mainnet events. Record a fresh screen capture of a real ranked entry, on-chain run recording, and the resulting prize settlement before presenting gameplay footage as mainnet proof. The homepage's EIP-7702 batch metric counts matching `Executed` events from the last seven days; it is a best-effort indexed metric, not a lifetime total. The visible run count is a separate count of `RunRecorded` events.
+The repository's existing desktop video still contains local practice-mode combat and must not be submitted as proof of live gameplay. The live app homepage reads wallet, retention, run, prize-pool, and Armory balance metrics from public mainnet events. Record a fresh screen capture of a real ranked entry, on-chain run recording, and the resulting prize settlement before presenting gameplay footage as mainnet proof. The homepage's EIP-7702 batch metric counts matching `Executed` events from the last seven days; it is a best-effort indexed metric, not a lifetime total. The visible run count is a separate count of `RunRecorded` events.
 
 ## Art and audio credits
 
