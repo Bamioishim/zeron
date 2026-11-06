@@ -220,7 +220,7 @@ function MuteBtn() {
 export const _CREDITS = <>art: CC0 "DungeonTileset II" by 0x72 + original sprites · music: "Cave Theme" by Brandon Morris (CC0) and "Dungeon Ambience" by yd (CC0) · sfx: "512 Sound Effects (8-bit)" by Juhani Junkala (CC0), all via OpenGameArt</>
 /** title screen: slowly panning, torch-lit dungeon behind the logo and a central play panel */
 /** title screen: panning torch-lit dungeon, logo, Halloween banner, one CTA, live on-chain stats, 3 steps */
-function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me: string; name?: string; stats: { burned?: bigint; players?: number; clears?: number } }) {
+function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me: string; name?: string; stats: { burned?: bigint; players?: number; clears?: number; returning7d?: number; runs7d?: number; prizePoolFunded7d?: bigint; prizesPaid7d?: bigint; armoryBalance?: bigint; armoryPaid7d?: bigint; armoryRunwayDays?: number | null } }) {
   const map = useMemo(() => dungeonMap(dayNow() % 97 + 3, roomsFor({ kind: 'level', level: 2 } as any).map((r) => r.key)), [])
   const api = useRef<WorldApi | null>(null)
   useEffect(() => {
