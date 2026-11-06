@@ -3,7 +3,7 @@
 **Zeron is a daily pixel dungeon game built around the real World is Flat ($WIF) token on Robinhood Chain.** Players claim an `@name`, explore dungeons, fight, compete in ranked runs, buy gear, and send WIF to other players.
 
 > **At a glance**
-> - **Play:** https://zeron-game-sigma.vercel.app
+> - **Play:** https://zeron-game.vercel.app
 > - **Network:** Robinhood Chain mainnet · chain ID `4663`
 > - **Token:** WIF · `0x5173b8eA6923c2d40267890D45C46a3480954773`
 > - **Live ranked flywheel:** ranked entries and daily-item purchases pay WIF fees; 80% enters that day's on-chain Game prize pool; after the day ends, anyone can settle the pool to the top ranked player. Players return to compete again, generating the next day's entry and item fees. No invented emissions: the prize is funded by actual player spend. Armory kill/level rewards are a separate prefunded pool.
@@ -50,7 +50,7 @@ A **standard sponsored batch costs 0.2 WIF**:
 - **0.1 WIF** is transferred to the dead address: `0x000000000000000000000000000000000000dEaD`.
 - **0.1 WIF** is transferred to the relayer to reimburse the sponsor.
 
-The starter grant and the player's first `@name` claim are free-onboarding exceptions. Other sponsored batches require the WIF gas fee. The account contract enforces a maximum of **20 sponsored batches per player per day**; the relayer can impose a lower operational limit or pause sponsorship.
+The starter grant and the player's first `@name` claim are free-onboarding exceptions. Other sponsored batches require the WIF gas fee. The account contract enforces a maximum of **20 sponsored batches per player per day**; the current production relayer setting is **10 sponsored batches per player per day**, and the relayer can impose a lower limit or pause sponsorship.
 
 ### Fee destruction is not native token burning
 
