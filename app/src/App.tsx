@@ -82,7 +82,7 @@ function PinFields({ pin, setPin: sp, pin2, setPin2, onEnter }: any) {
 const pinHint = (pin: string, pin2: string) => !pin ? 'Pick a 4-digit PIN. You log in with @name + PIN on any device.' : !pinRe.test(pin) ? 'PIN is 4 digits.' : pin2.length < 4 ? 'Type the PIN again to confirm.' : pin !== pin2 ? "PINs don't match." : '✓ PIN set'
 /** log in on this device with @name + PIN */
 function PinLogin({ onBack, backLabel }: { onBack?: () => void; backLabel?: string }) {
-  const [name, setName] = useState(me.name === 'bamio' ? '' : 'bamio'), [pin, setP] = useState(''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
+  const [name, setName] = useState(''), [pin, setP] = useState(''), [busy, setBusy] = useState(false), [err, setErr] = useState('')
   const [resetMode, setResetMode] = useState(false)
   const ok = nameRe.test(name) && pinRe.test(pin) && !busy
   const go = async (e?: any) => {
