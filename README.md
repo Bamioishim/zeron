@@ -1,85 +1,141 @@
-# Zeron (World is Flat hackathon) — live on Robinhood Chain mainnet
+# Zeron — World is Flat hackathon build on Robinhood Chain mainnet
 
-Production (https://zeron-game.vercel.app) runs on **Robinhood Chain mainnet (chain 4663)** with the real $wif.
-The old testnet build is still reachable at https://wif-depths-5ak1srszj-bamioishim.vercel.app (chain 46630, mock WIF).
-Explorer: https://robinhoodchain.blockscout.com
+**Live:** https://zeron-game.vercel.app  
+**Chain:** Robinhood Chain **mainnet** (id **4663**)  
+**Token:** real **$wif** ([@WIFonRH](https://x.com/WIFonRH) / [worldisflat.fun](https://worldisflat.fun/)) at [`0x5173b8eA6923c2d40267890D45C46a3480954773`](https://robinhoodchain.blockscout.com/address/0x5173b8eA6923c2d40267890D45C46a3480954773)  
+**Explorer:** https://robinhoodchain.blockscout.com  
+
+Zeron is a top-down pixel dungeon: town hub, levels, shop, wardrobe, crafting, arena, Halloween Pumpkin King. Players need **0 ETH** — gas is sponsored and repaid in **$wif**. Part of each fee is **destroyed** (see burn model below).
+
+> **Deep dive:** [docs/TOKENOMICS.md](docs/TOKENOMICS.md) — per-function fees, dead-address vs native `burn()`, live parameter table, funding snapshot, verification commands.  
+> **Ops / pickup:** [HANDOVER.md](HANDOVER.md)
+
+Hackathon window (from project handover): submissions close **Thu 12 Nov 2026, 18:30 WAT**; keep the game live through **16 Nov**.
+
+---
 
 ## Canonical project token
-Builders must use the Zeron project WIF token on Robinhood Chain mainnet, not an arbitrary token named WIF:
 
-- **Network:** Robinhood Chain mainnet
-- **Chain ID:** 4663
-- **Project WIF contract:** `0x5173b8eA6923c2d40267890D45C46a3480954773`
+Use this exact Robinhood Chain token for production. Do **not** substitute Solana dogwifhat, MockWIF, or any other “WIF” ticker.
 
-The frontend reads this address from `app/src/shared/deployments.json`. The testnet-only `MockWIF` address must not be used for production integrations.
+| | |
+|---|---|
+| Network / chain id | Robinhood Chain mainnet / **4663** |
+| Contract | `0x5173b8eA6923c2d40267890D45C46a3480954773` |
+| On-chain name / symbol | World is Flat / WIF |
+| Frontend source of truth | `app/src/shared/deployments.json` |
+
+Official identity references: site [worldisflat.fun](https://worldisflat.fun/), X [@WIFonRH](https://x.com/WIFonRH) (includes CA citation in [this post](https://x.com/WIFonRH/status/2107896657648173164)).
+
+**Testnet / history only:** older MockWIF builds (chain **46630**) such as https://wif-depths-5ak1srszj-bamioishim.vercel.app are **not** production. Ignore testnet prices (often 10× mainnet) when talking about the live game.
+
+---
+
+## Burn / destroy model (read carefully)
+
+FeeSink contracts were deployed with **`useBurn = false`** (`DeployMainnet.s.sol`). Destroyed fee shares are sent to **`0x000000000000000000000000000000000000dEaD`**, not via `token.burn()`.
+
+| Contract | Live `burnBps` | Destroy share |
+|---|---|---|
+| Game (ranked entry + daily items) | 2000 | **20%** → dEaD |
+| Quest (craft) | 2000 | **20%** → dEaD |
+| Names (rename) | 5000 | **50%** → dEaD |
+| Shop (wardrobe buys) | 5000 | **50%** → dEaD |
+| Armory (weapons / ammo) | 5000 | **50%** → dEaD |
+| PvP stake resolve | `pvpBurnBps` 1000 | **10%** of stake → dEaD |
+
+**Sponsored gas repayment** (frontend `gasFeeCalls`): **0.2 WIF** per batch → **0.1** to dEaD + **0.1** to the relayer (always dead-address path), except free-onboarding batches (`starter` and/or first `@name`; see [docs/TOKENOMICS.md](docs/TOKENOMICS.md) §4).
+
+`deployments.json` has `"burnVerified": false`. The WIF token may support `burn()`, but **Zeron sinks do not call it on mainnet today**. UI “burned” = destroyed / sent to dead (or gas half-dead), **not** a claim that Zeron reduced `totalSupply` via native burn.
+
+FeeSink `totalDestroyed` sum observed **2026-11-06 ~02:02 WAT**: **6.5 WIF** (Game 0.5 + Shop 3 + Armory 3). Details and verification: [docs/TOKENOMICS.md](docs/TOKENOMICS.md).
+
+---
 
 ## Mainnet addresses (chain 4663)
-- WIF (real) [0x5173b8eA6923c2d40267890D45C46a3480954773](https://robinhoodchain.blockscout.com/address/0x5173b8eA6923c2d40267890D45C46a3480954773)
-- WifAccount (7702) [0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392](https://robinhoodchain.blockscout.com/address/0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392)
-- WifDepths (game) [0x7a9b811C490F4F089f63bC6001d801216846Fbd8](https://robinhoodchain.blockscout.com/address/0x7a9b811C490F4F089f63bC6001d801216846Fbd8)
-- WifQuest [0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451](https://robinhoodchain.blockscout.com/address/0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451)
-- WifQuestEndgame [0xDC9100bDFfC996e509b0e49934aF006785887Fa6](https://robinhoodchain.blockscout.com/address/0xDC9100bDFfC996e509b0e49934aF006785887Fa6)
-- NameRegistryV2 [0x4A09d12912dA069687Ce1F568908D18409Eb3B63](https://robinhoodchain.blockscout.com/address/0x4A09d12912dA069687Ce1F568908D18409Eb3B63)
-- ZeronShop [0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE](https://robinhoodchain.blockscout.com/address/0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE)
-- ZeronArmory [0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7)
-- Deployer/treasury 0x2bCEc454514201d867982ecDE9766DC2ed87958E · Relayer 0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a · Run signer 0x3A889344dD6D5E39AC319d11C799504ffaac03fe
 
-Burns: real WIF burns are sent to 0x000000000000000000000000000000000000dEaD (contracts deployed with useBurn=false).
-Economy (1/10 of testnet): starter gift 5 WIF (owner-settable, clamped to the pool), ranked entry 10, items 2.5/4/4, weapons 6–25, ammo 1.5, rename 5, rewards of 3 WIF per small enemy, 10 WIF per boss, and 10 WIF per level clear (max 150 WIF/day per wallet, paid only while the pool lasts).
-Gas: players need 0 ETH; each sponsored action costs 0.2 WIF (0.1 to 0xdEaD, 0.1 to the relayer). Sponsor limits: SPONSOR_DAILY_CAP=10 per wallet, auto-pause below SPONSOR_MIN_BALANCE_WEI=5e13, kill switch SPONSOR_PAUSED.
+| Contract | Address |
+|---|---|
+| WIF | [`0x5173b8eA6923c2d40267890D45C46a3480954773`](https://robinhoodchain.blockscout.com/address/0x5173b8eA6923c2d40267890D45C46a3480954773) |
+| Game (WifDepths) | [`0x7a9b811C490F4F089f63bC6001d801216846Fbd8`](https://robinhoodchain.blockscout.com/address/0x7a9b811C490F4F089f63bC6001d801216846Fbd8) |
+| Quest | [`0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451`](https://robinhoodchain.blockscout.com/address/0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451) |
+| QuestEndgame | [`0xDC9100bDFfC996e509b0e49934aF006785887Fa6`](https://robinhoodchain.blockscout.com/address/0xDC9100bDFfC996e509b0e49934aF006785887Fa6) |
+| Names | [`0x4A09d12912dA069687Ce1F568908D18409Eb3B63`](https://robinhoodchain.blockscout.com/address/0x4A09d12912dA069687Ce1F568908D18409Eb3B63) |
+| Shop | [`0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE`](https://robinhoodchain.blockscout.com/address/0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE) |
+| Armory | [`0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7`](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7) |
+| Account impl | [`0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392`](https://robinhoodchain.blockscout.com/address/0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392) |
+| Relayer | [`0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a`](https://robinhoodchain.blockscout.com/address/0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a) |
+| Treasury / deployer | [`0x2bCEc454514201d867982ecDE9766DC2ed87958E`](https://robinhoodchain.blockscout.com/address/0x2bCEc454514201d867982ecDE9766DC2ed87958E) |
+
+---
+
+## Economy cheat-sheet (live mainnet parameters)
+
+Verified on-chain **2026-11-06**; full tables in [docs/TOKENOMICS.md](docs/TOKENOMICS.md).
+
+- Starter gift: **5 WIF** once (`ZeronShop.starterAmount`)
+- Ranked entry: **10 WIF** (20% destroyed)
+- Daily items: **2.5 / 4 / 4 WIF** (20% destroyed → prize pool keeps rest)
+- Rename `@name`: **5 WIF** (50% destroyed); first claim free
+- Craft fee base: **2 WIF** × tier (20% destroyed)
+- PvP stake: **1 WIF** (10% of stake destroyed on resolve)
+- Weapons: **6–25 WIF** (50% destroyed); ammo refill **1.5 WIF**
+- Costumes: **6–15 WIF** (50% destroyed)
+- Gas in WIF: **0.2** per sponsored batch (0.1 dead + 0.1 relayer), **waived** for free onboarding only (`starter` and/or first `@name` claim—see TOKENOMICS §4)
+- Play-to-earn: paid from armory pool; on-chain **`dailyCap = 10 WIF`/day** (frontend also scales units by `rewardScaleBps = 1000`)
+- Sponsored batches: **`SPONSORED_PER_DAY = 20`** in `WifAccount`
+
+**Misleading older claims to ignore:** testnet weapon prices 60–250 WIF; “150 WIF/day” reward cap as if it were current mainnet; “Claim 350 WIF” starter UI string; any implication that FeeSinks already use native `burn()`.
+
+---
 
 ## PIN login and recovery
 
-Zeron login uses `@name` plus a 4-digit PIN. During PIN setup, the player also chooses a recovery question and answer. The wallet private key is encrypted in the browser with the PIN and separately with the normalized recovery answer; the server stores only ciphertext, salts, and one-way verifiers in the private Vercel Blob vault. Answers and PINs are never sent to the server in plaintext.
-
-If a player forgets the PIN, the login screen provides **Forgot PIN?**. After the correct recovery answer, the player chooses a new PIN and the wallet is re-encrypted locally. Recovery attempts are rate-limited and locked temporarily after repeated failures. Accounts created before recovery questions were added must open Zeron on the already-unlocked wallet, use **Change PIN**, and save a question before recovery is available. The current `@bamio` vault record is one of these legacy records (`recovery: false`); it has not been changed remotely.
-
-Do not hardcode a PIN such as `0000` or add an administrative PIN bypass. Setting a PIN must be authorized by the wallet that owns the on-chain name, otherwise the encrypted wallet could be taken over.
-
-## Mainnet migration transactions
-- Bridge (Relay, Solana→Robinhood): Solana sig 2T2wuqqenC1mYiYScvDgpX8vNXvxx8DN6hPy8ErCqzUcwghLeqfhgunvyLi75LYNojHaZ5sZNSfgNpdtUSFtdwYM → [0x04581af3…c093](https://robinhoodchain.blockscout.com/tx/0x04581af3c77d09b80725720bb1195ee23ab8784a5d8f6be05945eedbf826c093) (0.001396987 ETH landed)
-- Swap 0.00022 ETH → 406.36 WIF (KyberSwap): [0x04c062df…4e9d](https://robinhoodchain.blockscout.com/tx/0x04c062dfdc1dc358ed76556d094fcf6bd8098735efe37eba3cbd3b0831434e9d)
-- 1 WIF → 0xdEaD transfer test (no tax): [0x469f4305…9ab6](https://robinhoodchain.blockscout.com/tx/0x469f4305f29547611cf40f50a403a5e02f7ffee202c02828368eca4f1e929ab6)
-- Deploy: see contracts/broadcast/DeployMainnet.s.sol/4663
-- Seed Shop 100 WIF [0x43754d4d…36e2](https://robinhoodchain.blockscout.com/tx/0x43754d4da4329495d633ca3a03131ace122d15dec6801c239709cbb2ffe336e2), Armory 200 WIF [0xc3656127…9e13](https://robinhoodchain.blockscout.com/tx/0xc36561272e98f05be70e5ea9591583b89d9354eeb5993543bbd0a6a4f6939e13), e2e player 20 WIF [0xe091fa23…6f527e](https://robinhoodchain.blockscout.com/tx/0xe091fa23aed4747f47f413c14f057738c235b3e2be31b354f4b937488e6f527e), relayer 0.00085 ETH [0xfa0f29c7…3ad3](https://robinhoodchain.blockscout.com/tx/0xfa0f29c7cb24fbec8c1130b4f1b90b408199425bd938957167ee04ee92033ad3)
-- Treasury claims @zeron: [0x0692ee28…a0a4](https://robinhoodchain.blockscout.com/tx/0x0692ee28fa6b1cdb50f6ab4064e43d79dd23ef78ceb7487cc9a6d6d2101ea0a4)
-
-## Mainnet e2e (zero-ETH player 0x8E5280E28fF90B546dB58fB0aF6cd7661be53588, gas paid in WIF)
-1. Starter gift + 7702 delegation: [0x3ac2b05f…9792](https://robinhoodchain.blockscout.com/tx/0x3ac2b05f0f556abf0b1f795c3dcc4e4c331e9838f376dc057e7f11728cb59792)
-2. Claim @z8e5280: [0x80426b02…ab78](https://robinhoodchain.blockscout.com/tx/0x80426b02e7b277d064d8fd7b3e3fe4c9bfff4b4a6098842ee006ae1e6ea0ab78)
-3. Buy Bow (6 WIF): [0xbe5dd78c…5b82](https://robinhoodchain.blockscout.com/tx/0xbe5dd78c1cd27d12a5f5fdf069f6bbc6da0a547275ad538358e90387e60e5b82)
-4. Send 1 WIF to @zeron: [0x735731f9…dd00](https://robinhoodchain.blockscout.com/tx/0x735731f9cbaf2512b3e9ece966db7f94b3c8df53ebd4764474cbc56bd2dddd00)
-5. Level 1 checkpoint: [0x685ba836…e257](https://robinhoodchain.blockscout.com/tx/0x685ba8369ae8a8bdde18c9a781a2d305860b6a49b21064a751951ba1c778e257)
-6. Relay refused a non-allowlisted transfer.
-7. Through the live production API: send 0.5 WIF to @zeron [0xded64b21…68fb](https://robinhoodchain.blockscout.com/tx/0xded64b21e94727be690b333fb067c4ab9fe01763642fbf2d60ac09db60fe68fb)
+Login is `@name` + 4-digit PIN. Setup also stores a recovery question. Wallet keys are encrypted in the browser; the vault API stores ciphertext and one-way verifiers only. **Forgot PIN?** uses the recovery answer locally. Legacy vault rows without recovery must use **Change PIN** on an unlocked device. Do not hardcode PINs or add admin bypasses.
 
 ---
-# Testnet history (chain 46630)
-A daily pixel dungeon game. **We sponsor gas; $wif powers the game, and part of every fee is destroyed.** Players need 0 ETH.
 
-## Onchain (contracts/, Foundry, 14 tests)
-- WifDepths: ranked entry (100 WIF, 20% destroyed, the rest goes to the daily pot), shop, server-signed runs (EIP-712, nonce), streaks, settle().
-- NameRegistry: @username (50 WIF, 50% destroyed), sendToName.
-- WifAccount: EIP-7702 delegate for sponsored batched calls.
-- MockWIF (testnet only). Set the token address with WIF_TOKEN for mainnet.
-- Destroy mode: `USE_BURN=false` sends tokens to 0x…dEaD. Only switch to burn() after it is verified (see below).
+## Stack / run locally
 
-## Offchain (app/)
-React/Vite/viem frontend. Two serverless endpoints:
-- /api/run replays the deterministic run and signs it.
-- /api/relay sponsors gas. It only calls our contracts and caps each player at `SPONSOR_DAILY_CAP=20` moves per day.
-  - Manual pause: `SPONSOR_PAUSED=true`.
-  - Auto-pause: when the relayer balance is below `SPONSOR_MIN_BALANCE_WEI`.
-Env vars: RELAYER_KEY, RUN_SIGNER_KEY.
+- `app/` — React 19 + Vite + TypeScript + viem; serverless `app/api/{relay,run,vault}.js`
+- `contracts/` — Foundry (solc 0.8.28)
 
-## Game (top-down)
-- A town hub with Market, Forge, Arena, Gate, Leaderboard and @Names NPCs. Talk to them with E or a tap.
-- 5 dungeon levels with wandering foes, turn-based fights, a boss room per level and onchain checkpoints (server-signed Clear).
-- A free daily run plus a ranked daily run.
-- Crafting at the Forge from level loot (iron, hide, glow), with a WIF fee that is partly destroyed.
-- PvP Arena: register, then challenge players or 6 NPC fighters with a staked WIF fee. **Deviation:** PvP is resolved onchain from a public seed, not server-signed, so outcomes are predictable per nonce.
-- Controls: WASD/arrows, E, number keys, and A/D/P in fights. On mobile there is a D-pad, an action button, 56px sticky fight buttons, vibrate on hit and swipeable tabs.
-- Movement is offchain; only results and economy calls go onchain.
+```bash
+cd app && npm install && npm run dev   # http://localhost:5173
+cd contracts && forge build && forge test
+```
+
+Production env var **names** (values only in Vercel — never commit): `RELAYER_KEY`, `RUN_SIGNER_KEY`, `RPC_URL`, `SPONSOR_DAILY_CAP`, `SPONSOR_MIN_BALANCE_WEI`, `SPONSOR_PAUSED`, `DEPLOYMENTS_OVERRIDE`, `BLOB_READ_WRITE_TOKEN`.
+
+### Demo media (reviewed)
+
+| | |
+|---|---|
+| Video (~63s PC) | [docs/assets/zeron-desktop-demo.mp4](docs/assets/zeron-desktop-demo.mp4) |
+| Thumbnail | [docs/assets/zeron-desktop-demo-thumb.jpg](docs/assets/zeron-desktop-demo-thumb.jpg) |
+| Screenshots | [docs/assets/CAPTIONS.md](docs/assets/CAPTIONS.md) — landing, Burn tracker (dEaD), local practice KO |
+| X thread (text) | [docs/SOCIAL-THREAD.md](docs/SOCIAL-THREAD.md) |
+
+Gameplay in the demo used the **existing** `deployed === false` practice path (blank contract addresses via `VITE_DEPLOYMENTS`)—not a new feature and **not** mainnet spend. Live Play still prompts `@name`; shop/starter/relayed actions on production move real WIF. Full burn/economy: [docs/TOKENOMICS.md](docs/TOKENOMICS.md).
+
+---
+
+## Example mainnet migration / e2e txs
+
+Bridge, swap, seed, and zero-ETH player e2e hashes remain useful references:
+
+- Bridge land: [`0x04581af3…c093`](https://robinhoodchain.blockscout.com/tx/0x04581af3c77d09b80725720bb1195ee23ab8784a5d8f6be05945eedbf826c093)
+- Swap → WIF: [`0x04c062df…4e9d`](https://robinhoodchain.blockscout.com/tx/0x04c062dfdc1dc358ed76556d094fcf6bd8098735efe37eba3cbd3b0831434e9d)
+- Seed shop / armory / relayer / e2e path: see prior README history and explorer links in git history; full narrative in [docs/TOKENOMICS.md](docs/TOKENOMICS.md) §6 and deploy broadcast under `contracts/broadcast/DeployMainnet.s.sol/4663`.
+
+---
+
+
+---
+
+## Historical notes (testnet / older README body)
+
+Sections below include **art/audio credits** (keep) plus older testnet/v3/v4 narrative. Prefer the **mainnet** tables above and [docs/TOKENOMICS.md](docs/TOKENOMICS.md) for live fees. Testnet MockWIF and 10× prices are not production.
 
 ## Art and licenses
 - Tiles, props and monsters: "DungeonTileset II" v1.7 by 0x72 (CC0 1.0), https://0x72.itch.io/dungeontileset-ii
@@ -128,9 +184,8 @@ Audio stays muted until your first click; toggle with the speaker button.
 
 ## Combat v2 + Armory (Oct 31)
 - Fights happen in place on the dungeon map (no fight window): floating damage/heal/BLOCK/PARRY numbers, mini HP bars, anime slash finisher (≤15% HP or stagger, skippable, longer for bosses).
-- Controls: mobile cluster ATTACK / BLOCK / POTION / WEAPON (+FINISH); desktop J attack, K block, L weapon, Q potion, F finisher, E interact/attack.
-- Weapons (ZeronArmory `0x8594ECDD0f48a95aDdbC2F1A4e81b4164ad77b6f`): Bow 60, Spear 90, Twin Daggers 120, Fire Staff 150, Pumpkin Launcher 180 (also a Pumpkin King drop), Bazooka 200, War Hammer 250. 50% burned / 50% treasury. Bazooka/Launcher share 3 ammo, refill 15 WIF.
-- Earn WIF: +3 per small enemy, +10 per boss, and +10 per level clear, claimed in the same sponsored tx as the checkpoint; server-signed EIP-712 claim, 150 WIF/day cap, paid from the Armory pool (clamped, never reverts). Pool is finite test WIF: top it up by transferring WIF to the Armory.
+- Controls (current fight HUD): mobile ATTACK / BLOCK / POTION / WEAPON (+FINISH); desktop **J** attack, **K** block, **L** weapon special, **Q** potion, **F** finisher, **E** interact. Older How-it-works text may still say A/D/P — prefer J/K/Q/F.
+- **Historical / testnet narrative (not current mainnet):** older Armory address `0x8594…7b6f` and testnet-scale prices (Bow 60 … War Hammer 250, ammo 15, **150 WIF/day** cap). **Live mainnet** uses Armory `0xd667…c2c7`, weapons **6–25 WIF**, ammo **1.5**, on-chain `dailyCap` **10 WIF/day**, `rewardScaleBps` **1000** — see [docs/TOKENOMICS.md](docs/TOKENOMICS.md).
 - Burn tab: total burned + per-sink chips + recent burns with tx links. Leaderboard: @names, costume avatar, level, PvP wins, burned.
 
 ## v4 changes
