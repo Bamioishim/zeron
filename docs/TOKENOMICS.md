@@ -149,7 +149,7 @@ Live costume prices (id → WIF): **1→6, 2→8, 3→12, 4→10, 5→10, 6→15
 | Claim rewards | `claim(...)` | 0 paid; pool pays out | none | capped payout |
 
 Live weapon list prices (WIF): **1 Bow 6 · 2 Spear 9 · 3 Twin Daggers 12 · 4 Fire Staff 15 · 5 Bazooka 20 · 6 War Hammer 25 · 7 Pumpkin Launcher 18** (UI treats 7 as drop-only / not sold).  
-`dailyCap()` live = **10 WIF / wallet / day** (not 150—older docs and some UI strings are wrong).  
+`dailyCap()` live = **10 WIF / wallet / day**. Older documentation used a 150 WIF figure; that is not the current mainnet cap.  
 Frontend `rewardScaleBps = 1000` applies a **0.1×** mainnet payout scale. The interface now shows the scaled amounts directly: **0.3 WIF** per small enemy and **1 WIF** per boss / level-clear reward unit, subject to the prefunded pool and 10 WIF daily cap.
 
 ### 5.4 Game — `WifDepths`
@@ -210,7 +210,6 @@ Zeron's starter and reward balances are **pre-funded contract balances**, not ne
 - The on-chain sponsored-batch ceiling is 20 per player/day. The relayer may apply a lower cap.
 - The starter and reward pools are prefunded. There is no automatic top-up implied by the contracts.
 - Contract configuration changes require the authorized owner/deployer. Private keys must remain outside the repository.
-- Auto-Hunt remains unavailable until Armory item ID 8 is deliberately configured and tested on-chain.
 
 
 ---
