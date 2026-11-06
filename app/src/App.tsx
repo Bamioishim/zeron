@@ -317,7 +317,7 @@ function MenuPanel({ view, onClose, stats, me, d, busy, act, approveIfNeeded, se
 }
 
 /** title screen: slowly panning, torch-lit dungeon behind the logo and a central play panel */
-/** title screen: panning torch-lit dungeon, logo, Halloween banner, one CTA, live on-chain stats, 3 steps */
+/** title screen: logo, Halloween banner, one CTA and wallet status */
 function Opening({ onEnter, onMenuView, me, name }: { onEnter: (t?: Tab) => void; onMenuView: (view: MenuView) => void; me: string; name?: string }) {
   const map = useMemo(() => dungeonMap(dayNow() % 97 + 3, roomsFor({ kind: 'level', level: 2 } as any).map((r) => r.key)), [])
   const api = useRef<WorldApi | null>(null)
@@ -327,7 +327,6 @@ function Opening({ onEnter, onMenuView, me, name }: { onEnter: (t?: Tab) => void
     const go = () => { if (!alive) return; const p = pts[i++ % pts.length]; api.current?.walkTo(p.x, p.y); setTimeout(go, 6500) }
     const t = setTimeout(go, 800); return () => { alive = false; clearTimeout(t) }
   }, [map])
-  const n = (v?: number) => (v === undefined ? '…' : v.toLocaleString())
   return (
     <div className="opening">
       <div className="opening-bg" aria-hidden><World map={map} defeated={0} locked={false} paused={false} onInteract={() => {}} onTouchFoe={() => {}} apiRef={api} prompt={() => {}} /></div>
@@ -524,8 +523,8 @@ export default function App() {
     <div className="shell" onTouchStart={onTS} onTouchEnd={onTE}>
       <header className="top">
         <div className="brand" onClick={() => setOpened(false)} title="Title screen"><Svg src={ICON} className="hd-icon" /><div><Svg src={WORDMARK} className="hd-word" /><div className="sub">a daily dungeon powered by $wif</div></div><MuteBtn /></div>
-        <MenuButton onSelect={setMenuView} />
         <div className="wallet">
+          <MenuButton onSelect={setMenuView} />
           <button className="chip namechip" title={me} onClick={() => setNamePrompt(m.name ? '' : 'Pick your @name')}><Pix k={'c' + (m.wardrobe?.eq ?? 0)} size={18} />{m.name ? '@' + m.name : m.name === '' ? 'claim @name' : '…'}</button>
           <div className="chip lime"><Sprite name="coin" size={14} /> {fmt(m.wif)} WIF</div>
           <button className="chip burnchip" onClick={() => setTab('burn')} title="Total WIF destroyed by FeeSink contracts, read on-chain">🔥 {fmt(d.burnedAll)} destroyed</button>
