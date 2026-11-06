@@ -175,6 +175,7 @@ Without `BLOB_READ_WRITE_TOKEN`, the vault falls back to in-memory storage. That
 - [Desktop demo video (~63 seconds)](docs/assets/zeron-desktop-demo.mp4)
 - [Demo screenshots and captions](docs/assets/CAPTIONS.md)
 - [Tokenomics and fee mechanics](docs/TOKENOMICS.md)
+- [Changelog and historical implementation notes](CHANGELOG.md)
 - [Maintainer handover](HANDOVER.md)
 - [Four-post X thread copy](docs/SOCIAL-THREAD.md)
 
