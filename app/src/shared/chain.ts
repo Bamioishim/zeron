@@ -28,6 +28,9 @@ export const gameAbi = parseAbi([
   'function enterRanked()', 'function buy(uint8,uint256)', 'function settle(uint64)', 'function settled(uint64) view returns (bool)',
   'function recordRun(uint64 day,uint32 score,uint32 xp,uint64 deadline,uint8[] used,bytes sig)',
   'event RunRecorded(address indexed player, uint64 indexed day, uint32 score, uint32 xp, uint32 streak, bool newLeader)',
+  'event Entered(address indexed player, uint64 indexed day, uint256 fee, uint256 toPool)',
+  'event Bought(address indexed player, uint8 indexed item, uint256 qty, uint256 cost)',
+  'event Settled(uint64 indexed day, address indexed winner, uint256 prize)',
 ])
 export const shopAbi = parseAbi([
   'function starter()', 'function buy(uint8)', 'function equip(uint8)', 'function claimDrop(uint8,uint256,bytes)',
