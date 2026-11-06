@@ -7,10 +7,10 @@
 > - **Network:** Robinhood Chain mainnet · chain ID `4663`
 > - **Token:** WIF · `0x5173b8eA6923c2d40267890D45C46a3480954773`
 > - **Live ranked flywheel:** ranked entries and daily-item purchases pay WIF fees; 80% enters that day's on-chain Game prize pool; after the day ends, anyone can settle the pool to the top ranked player. Players return to compete again, generating the next day's entry and item fees. No invented emissions: the prize is funded by actual player spend. Armory kill/level rewards are a separate prefunded pool.
- > - **Live proof metrics:** the homepage now reads named wallets, 7-day returning players, recorded runs, prize-pool inflows and payouts, Armory balance, and estimated Armory reward runway directly from Robinhood Chain events. These are live counters, not practice-mode estimates.
+> - **Live proof metrics:** the homepage now reads named wallets, 7-day returning players, recorded runs, prize-pool inflows and payouts, Armory balance, and estimated Armory reward runway directly from Robinhood Chain events. These are live counters, not practice-mode estimates.
 > - **Economy limits:** 0.2 WIF per standard sponsored batch; 10 WIF per-wallet daily Armory reward cap; reward pools are finite and have no automatic top-up.
 >
-> **Status honesty:** mainnet contracts and WIF-denominated economy actions are deployed. The demo's combat footage is practice-mode footage. Do not treat simulated HUD rewards as paid on-chain rewards or claim retention/traction without measured data.
+> **Status honesty:** mainnet contracts and WIF-denominated economy actions are deployed. The demo's combat footage is practice-mode footage. Do not treat simulated HUD rewards as paid on-chain rewards. Retention and economy metrics shown on the live homepage are derived from public mainnet events.
 
 ## What players can do
 
