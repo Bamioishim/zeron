@@ -178,7 +178,7 @@ Without `BLOB_READ_WRITE_TOKEN`, the vault falls back to in-memory storage. That
 - [Maintainer handover](HANDOVER.md)
 - [Four-post X thread copy](docs/SOCIAL-THREAD.md)
 
-The repository's existing desktop video still contains local practice-mode combat and must not be submitted as proof of live gameplay. The live app homepage now reads wallet, retention, run, prize-pool, and Armory runway metrics from public mainnet events. Record a fresh screen capture of a real ranked entry, on-chain run recording, and the resulting prize settlement before presenting gameplay footage as mainnet proof. The app does not currently publish a global sponsored-batch count; the visible run count is a count of `RunRecorded` events, not a batch count.
+The repository's existing desktop video still contains local practice-mode combat and must not be submitted as proof of live gameplay. The live app homepage now reads wallet, retention, run, prize-pool, and Armory runway metrics from public mainnet events. Record a fresh screen capture of a real ranked entry, on-chain run recording, and the resulting prize settlement before presenting gameplay footage as mainnet proof. The homepage's EIP-7702 batch metric counts matching `Executed` events from the last seven days; it is a best-effort indexed metric, not a lifetime total. The visible run count is a separate count of `RunRecorded` events.
 
 ## Art and audio credits
 
