@@ -30,7 +30,7 @@ export async function homeStats() {
   const recent = { fromBlock: from7d, toBlock: latest }
   const [b, names, clears, runs, entries, purchases, settlements, rewards, batchLogs, armoryBalance, gameBurnBps] = await Promise.all([
     totalBurned(),
-    pub.getLogs({ address: D.names as Hex, event: parseAbi(['event NameClaimed(address indexed who, string name)'])[0], fromBlock: 0n, toBlock: latest }).catch(() => []),
+    pub.getLogs({ address: D.names as Hex, event: parseAbi(['event NameClaimed(address indexed who, string name)'])[0], fromBlock: latest > 400000n ? latest - 400000n : 0n, toBlock: latest }).catch(() => []),
     pub.getContractEvents({ address: D.quest as Hex, abi: questAbi, eventName: 'LevelCleared', ...recent }).catch(() => []),
     pub.getContractEvents({ address: D.game as Hex, abi: gameAbi, eventName: 'RunRecorded', ...recent }).catch(() => []),
     pub.getContractEvents({ address: D.game as Hex, abi: gameAbi, eventName: 'Entered', ...recent }).catch(() => []),
