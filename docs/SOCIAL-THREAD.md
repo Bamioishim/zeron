@@ -1,35 +1,44 @@
 # Zeron — 4-post X thread (copy deck)
 
-Delivered for @writer / posting. **No images in-thread** (screenshots ship separately in `docs/assets/`).
+Delivered for @writer / posting. Use only after checking that the live site and contract configuration still match the details below.
 
-## Sources (keep OUT of post bodies; do not append after the CA post)
-- Live game: https://zeron-game.vercel.app
+## Sources (keep OUT of post bodies)
+- Live game: https://zeron-game-sigma.vercel.app
 - Token (Robinhood Chain 4663): `0x5173b8eA6923c2d40267890D45C46a3480954773` — [@WIFonRH](https://x.com/WIFonRH) / [worldisflat.fun](https://worldisflat.fun/)
-- Economy/burn detail: [TOKENOMICS.md](TOKENOMICS.md)
-- Screenshots: [assets/CAPTIONS.md](assets/CAPTIONS.md)
-- Verified (2026-11-06): FeeSink `useBurn=false` (dEaD destroy); game/quest **20%**; names/shop/armory **50%**; PvP stake **10%**; gas **0.2 WIF**/batch; armory `dailyCap=10` WIF/day; starter **5** WIF. Do **not** claim native burn for Zeron sinks.
+- Economy mechanics: [TOKENOMICS.md](TOKENOMICS.md)
+- Demo and footage limitations: [assets/CAPTIONS.md](assets/CAPTIONS.md)
 
 ## Thread (4 posts)
 
-1/4
-zeron is a daily pixel dungeon on robinhood chain.
-claim a unique @name, drop into town, then fight, block, parry and strike through levels.
-its fees and purchases use real $wif from @WIFonRH. players need no ETH while gas sponsorship is available.
+**1/4**
 
-2/4
-$wif is part of the game loop, not just a ticker on the landing page.
-there’s a 5 WIF starter gift, 10 WIF ranked entry, and WIF-priced items, weapons, costumes and ammo. renaming, crafting and PvP stakes also use it.
-run rewards are scaled onchain and paid from the armory pool, subject to its current 10 WIF daily cap per wallet and available funds. they aren’t guaranteed per-kill payouts.
+Zeron is a daily pixel dungeon game on Robinhood Chain.
 
-3/4
-the gas fee is 0.2 WIF per sponsored onchain batch, not per movement or click: 0.1 goes to the dead address and 0.1 to the relayer covering ETH gas.
-other fee splits differ: game/quest send 20% to the dead address; names/shop/armory send 50%; the PvP stake path sends 10%.
-important detail: deployed FeeSinks have useBurn=false. The old interface called this “burning”; the current UI correctly labels it destruction via a dead-address transfer—not a native burn() or proof that totalSupply falls.
+Claim an `@name`, explore the town, then fight through dungeon levels, challenge arena opponents and build your character.
 
-4/4
-built for the world is flat hackathon, using the real @WIFonRH token on robinhood chain (4663).
-play: https://zeron-game.vercel.app/
-code and detailed token mechanics: https://github.com/Bamioishim/zeron
+It uses the real World is Flat ($WIF) token. Players can use sponsored transactions without holding ETH, while sponsorship is available.
 
-WIF token CA:
-0x5173b8eA6923c2d40267890D45C46a3480954773
+**2/4**
+
+$WIF is used across the game: a 5 WIF starter grant, 10 WIF ranked entry, WIF-priced daily items, weapons, costumes and ammo. Renaming, crafting and PvP stakes also use WIF.
+
+Eligible play rewards are paid from a prefunded Armory pool, with a 10 WIF per-wallet daily cap. Rewards depend on available pool funds and are not guaranteed.
+
+**3/4**
+
+A standard sponsored on-chain batch costs 0.2 WIF: 0.1 goes to the dead address and 0.1 reimburses the relayer covering network gas.
+
+One important distinction: 80% of ranked-entry and daily-item fees remain in the Game contract's daily prize pool. Armory play rewards are paid from a separate prefunded pool. Those pools do not automatically replenish each other, so Zeron's current deployment is not yet a closed, self-replenishing reward flywheel.
+
+**4/4**
+
+Built for the World is Flat hackathon, using the real @WIFonRH token on Robinhood Chain (4663).
+
+The current public demo includes local practice-mode combat footage. That footage is not proof of on-chain gameplay or player retention, and we are not publishing unverified activity numbers.
+
+Play: https://zeron-game-sigma.vercel.app/
+
+Code and transparent token mechanics: https://github.com/Bamioishim/zeron
+
+WIF token contract:
+`0x5173b8eA6923c2d40267890D45C46a3480954773`
