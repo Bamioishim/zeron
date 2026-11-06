@@ -7,7 +7,7 @@ import { HALLOWEEN, COSTUMES, WEAPONS } from './config'
 import { setCostume } from './game/art'
 import { totalBurned, homeStats, recentBurns, wardrobeOf, shopPrices, burnedIn, arsenalOf, type BurnRow } from './onchain'
 import { ITEMS, scoreOf, dayNow, roomsFor, LEVELS, MAX_LEVEL, ONCHAIN_MAX_LEVEL, LEVEL_KIT, RECIPES, lootFor, statsFor, type ItemId, type Move, type Mode, type EnemyDef } from './shared/engine'
-import { account, pub, sponsored, postRun, getKey } from './wallet'
+import { account, pub, sponsored, postRun, getKey, isFreeOnboarding } from './wallet'
 import { hasPin, setPin, loginPin, resetPin, pinRe, RECOVERY_QUESTIONS } from './pin'
 import { Sprite } from './sprites'
 import World, { type WorldApi } from './game/World'
@@ -253,7 +253,7 @@ function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me:
           <div><i>2</i><b>Fight</b><span>real-time: block, parry, strike</span></div>
           <div><i>3</i><b>Destroy WIF</b><span>fee shares go to the dead address; gas is paid in WIF</span></div>
         </div>
-        <div className="op-links"><button className="linkbtn" onClick={() => onEnter('how')}>How it works</button> · <button className="linkbtn" onClick={() => onEnter('board')}>Leaderboard</button> · <button className="linkbtn" onClick={() => onEnter('burn')}>Burn tracker</button></div>
+        <div className="op-links"><button className="linkbtn" onClick={() => onEnter('how')}>How it works</button> · <button className="linkbtn" onClick={() => onEnter('board')}>Leaderboard</button> · <button className="linkbtn" onClick={() => onEnter('burn')}>Destroyed tracker</button></div>
       </div>
       <div className="op-foot">Created by Bamio for the World is Flat hackathon</div>
     </div>
@@ -400,8 +400,10 @@ export default function App() {
     if (!calls.length) { setToast({ msg: 'Nothing to send.', err: true }); return null }
     setBusy(label); setToast(null); if (label === 'claim') claimedHere.current = true
     try {
+      const freeOnboarding = await isFreeOnboarding(calls)
       const r = await sponsored(calls); audio.sfx('coin')
-      const id = setToast({ msg: ok, link: r.explorer, gas: true, burned: null })
+      const gasCharged = !freeOnboarding && !!D.relayer && BigInt(D.gasFeeWei || '0') > 0n
+      const id = setToast({ msg: ok, link: r.explorer, gas: gasCharged, burned: null })
       burnedIn(r.hash).then((b) => {
         setToastS((t) => (t && t.id === id ? { ...t, burned: b } : t)); setActs((x) => x.map((a) => (a.id === id ? { ...a, burned: b } : a)))
       }).catch(() => {})
@@ -676,7 +678,7 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
       </div>
       <div className={'worldwrap' + (hit === 'hero' ? ' shake' : '') + (fin ? ' finfreeze' : '')} onClick={() => fin && setFin(null)}>
         <World map={map} defeated={run ? (run.cleared ? 99 : run.room) : 0} locked={!!run && run.room < rooms.length - 1} paused={paused}
-          onInteract={onInteract} onTouchFoe={onTouchFoe} onDoor={onDoor} apiRef={api} prompt={setNear} hunt={huntOwned && hunt} />
+          onInteract={onInteract} onTouchFoe={onTouchFoe} onDoor={onDoor} apiRef={api} prompt={setNear} />
         {fade && <div className="fadeout" />}
         {Date.now() - swingK < 400 && <div key={swingK} className="swing" style={{ left: hp.x + '%', top: hp.y + '%' }} />}
         {fight && run && foe && !fin && run.room === engaged.current && <>
