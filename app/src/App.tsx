@@ -820,7 +820,7 @@ function Arena({ me, d, busy, act, approveIfNeeded, loadFighters, player, setToa
       const ev = parseEventLogs({ abi: questAbi, logs: rc.logs, eventName: 'Battle' })[0] as any
       const mine = [st.atk, st.def, st.hp]
       setReplay({ rounds: simulate(mine, [f.atk, f.def, f.hp], ev.args.seed), won: ev.args.challengerWon, foe: f, me: mine, shown: 0 })
-    } catch (e: any) { setToast({ msg: 'Battle done, but the replay could not be loaded. Check the arena list.', err: true }) }
+    } catch { setToast({ msg: 'Battle done, but the replay could not be loaded. Check the arena list.', err: true }) }
     load()
   }
   useEffect(() => { if (!replay || replay.shown >= replay.rounds.length) return; const t = setTimeout(() => setReplay({ ...replay, shown: replay.shown + 1 }), 280); return () => clearTimeout(t) }, [replay])
