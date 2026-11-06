@@ -202,18 +202,14 @@ Zeron's starter and reward balances are **pre-funded contract balances**, not ne
 
 This is a real fee → prize pool → player reward → next competition loop. It is not a guaranteed yield or a promise of a fixed prize: pool size depends on actual player activity and paid item usage. The contract's `Entered`, `Bought`, and `Settled` events are the source of truth for contributions and payouts.
 
-### Separate Armory rewards and runway
+### Separate Armory rewards: prefunded and manually replenished
 
-Armory kill/level rewards are **not** paid from the ranked Game prize pool. They come from the separately prefunded Armory WIF balance. That balance is finite, has no automatic refill, and rewards stop when it is depleted. An authorized operator must transfer WIF into the Armory contract to replenish it.
+Armory kill/level rewards are **not** paid from the ranked Game prize pool. They come from the separately prefunded Armory WIF balance. The deployed Armory has no fee-split setter or automatic route from weapon/ammo purchases into the reward pool. **0% of weapon/ammo fees is routed to Armory rewards.** The retained purchase share goes to the treasury; the configured destruction share goes to the dead address.
 
-The live homepage now reads:
-- Current WIF balance held by the Armory contract.
-- Total Armory `Rewarded` event payouts during the trailing 7-day window.
-- Estimated runway using the observed daily payout rate.
-
-`runway_days = current_armory_WIF_balance / (armory_WIF_paid_over_last_7_days / 7)`
-
-The estimate displays as unavailable when there have been no Armory payouts in the observation window. It is a backward-looking estimate, not a guarantee of future reward availability. The 10 WIF per-wallet daily cap is a maximum limit, **not** an estimate of actual daily outflow.
+- **Live balance:** [View the Armory's WIF token balance on Blockscout](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7?tab=tokens). No dated numeric balance is published here because a current Blockscout snapshot could not be verified for this submission.
+- **Daily cap:** the last verified production setting was 10 WIF per wallet/day. The live `dailyCap()` getter is the source of truth and should be rechecked before quoting the current cap.
+- **Funding policy:** the team reviews the balance every Monday. If it is below 30 days of payouts at the trailing-seven-day average, the team tops it back up toward that 30-day target. This is a manual treasury policy, not an on-chain automatic refill.
+- **Rewards stop when the pool is depleted.** No runway estimate is published; a cap is a maximum claim limit, not a forecast of daily outflow.
 
 ### What is still trusted / future work
 
