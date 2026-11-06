@@ -99,3 +99,14 @@ Historical testnet notes included a 20-move sponsor cap, 100-WIF ranked entry, a
 - The town gained Market, Forge, Arena, Post, Tailor, Apothecary, Armory, and Notice Board stalls.
 - Combat moved in-place onto the dungeon map with floating damage, mini HP bars, finishers, mobile controls, and weapon abilities.
 - Vercel API functions are committed as bundles because the deployed Node ESM resolver could not reliably load the original extensionless TypeScript dependency graph.
+
+
+## 2026-11-06 — Armory funding transparency and replay verification
+
+- Confirmed the Armory contract has no reward-pool fee-split setter: weapon/ammo fees retain the existing FeeSink destruction split and send the remainder to treasury.
+- Documented the Armory as team-funded, with 0% of weapon/ammo fees routed to rewards, a Monday treasury review, and a 30-day trailing-payout runway target.
+- Linked the Armory's live WIF holdings on Blockscout instead of publishing an unverified static balance.
+- Documented the cap discrepancy: 150 WIF is the Solidity constructor default; the latest recorded production getter check was 10 WIF per wallet/day. The live getter must be checked before quoting a current value.
+- Added `app/tools/verify-run.ts` and `npm run verify:run` to replay daily/level event logs and verify EIP-712 signatures independently.
+- Confirmed in source that Run, Clear, and Duel signatures are checked by their respective contracts.
+- Explicitly documented that level salt remains client-influenced and a server commitment/reveal lifecycle is not implemented; scoring still trusts one configured signer.
