@@ -48,7 +48,7 @@ Shared logic lives in `contracts/src/FeeSink.sol`:
 
 `app/src/shared/deployments.json` also has `"burnVerified": false`.
 
-**Do not claim “native burn is live” for Zeron sinks.** A static `burn(1)` simulation against the WIF token from a funded holder can succeed (the token appears burn-capable), but **Zeron’s FeeSinks are not configured to call it**. Destruction today is **transfer-to-dead**. UI copy that says “burned” means **destroyed via FeeSink / gas fee path**, not necessarily `totalSupply` reduction from Zeron.
+**Do not claim “native burn is live” for Zeron sinks.** A static `burn(1)` simulation against the WIF token from a funded holder can succeed (the token appears burn-capable), but **Zeron’s FeeSinks are not configured to call it**. Destruction today is **transfer-to-dead**. Older UI copy used “burned” as shorthand for transfers to the dead address. The current interface labels these amounts as **destroyed**. FeeSink totals exclude the separate gas-fee transfers; neither path reduces `totalSupply` through Zeron's FeeSink configuration.
 
 ### Contract-reported destroyed totals (FeeSink `totalDestroyed`, 2026-11-06 ~02:02 WAT)
 
@@ -61,7 +61,7 @@ Shared logic lives in `contracts/src/FeeSink.sol`:
 | Armory | **3 WIF** |
 | **Sum** | **6.5 WIF** |
 
-This matches the live **Burn** tab breakdown observed ~02:00 WAT (Game 0.5 · Wardrobe 3 · Armory 3 · Forge/Arena 0 · Names 0; recent ledger empty). Those counters only track FeeSink `_destroy` calls—not the separate **gas fee** half-to-dead transfers (see §4).
+This matches the live **Destroyed** tracker breakdown observed ~02:00 WAT (the interface previously labelled this tab “Burn”) (Game 0.5 · Wardrobe 3 · Armory 3 · Forge/Arena 0 · Names 0; recent ledger empty). Those counters only track FeeSink `_destroy` calls—not the separate **gas fee** half-to-dead transfers (see §4).
 
 ---
 
@@ -253,8 +253,8 @@ Reviewed desktop demo (real screen recordings only; final videoReview **PASS**):
 
 Production at https://zeron-game.vercel.app has contracts deployed, so Play prompts `@name`. For **local practice footage only**, the existing app path `deployed === false` was used by supplying blank `wif` / `game` / `names` / `accountImpl` through the already-supported **`VITE_DEPLOYMENTS`** override (see `app/src/shared/chain.ts`). That shows the in-app banner **“Contracts aren't live yet, so this is practice mode.”** Onboarding/`act()` returns early—**no** account claim, login, payment, signatures, or mainnet writes. UI earn popups in practice are **simulated only**.
 
-Menus / Destroyed tracker / How segments in the demo were recorded on the live site (chrome only). Practice segments carry a persistent **LOCAL PRACTICE — NO FUNDS MOVED** overlay. Burn segment overlay: FeeSink destroy → **`0x…dEaD`** (`useBurn=false`) — **not** native `token.burn()` / totalSupply proof. The demo is **not** on-chain transfer proof. Do not invent room counts or HUD WIF totals from OCR.
+Menus / tracker / How segments in the demo were recorded on the live site (chrome only). The footage predates the interface rename from “Burn” to “Destroyed”. Practice segments carry a persistent **LOCAL PRACTICE — NO FUNDS MOVED** overlay. The tracker segment shows FeeSink destruction → **`0x…dEaD`** (`useBurn=false`), not native `token.burn()` or proof that `totalSupply` fell. The demo is **not** on-chain transfer proof. Do not invent room counts or HUD WIF totals from OCR.
 
 ### Controls note
 
-Desktop fight keys in the current HUD/handler: **J** attack · **K** block · **L** weapon special · **Q** potion · **F** finisher · **E** interact · WASD/arrows walk. Some How-it-works copy still mentions older A/D/P bindings—prefer J/K/Q/F.
+Desktop fight keys in the current HUD/handler and updated How-it-works copy: **J** attack · **K** block/parry · **L** weapon special · **Q** potion · **F** finisher · **E** interact · WASD/arrows walk.
