@@ -243,7 +243,7 @@ function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me:
         <button className="btn lime big op-cta" onClick={() => onEnter('world')}>Enter the Depths ▸</button>
         <div className="fine op-who">{name ? <>Playing as <b>@{name}</b></> : <>Wallet ready · {short(me)}</>} · 0 ETH needed, gas is on Zeron</div>
         <div className="op-stats">
-          <div><b>{n(stats.players)}</b><span>named wallets · on-chain</span></div>
+          <div><b>{n(stats.players)}</b><span>named wallets · indexed mainnet history</span></div>
           <div><b>{n(stats.returning7d)}</b><span>returning players · 7d</span></div>
           <div><b>{n(stats.runs7d)}</b><span>recorded runs · 7d</span></div>
           <div><b>{n(stats.batches7d)}</b><span>EIP-7702 batches · 7d</span></div>
