@@ -28,7 +28,7 @@ export async function homeStats() {
   const sevenDaysAgo = tip.timestamp > 7n * 86400n ? tip.timestamp - 7n * 86400n : 0n
   const from7d = await blockAtOrAfter(sevenDaysAgo, latest)
   const recent = { fromBlock: from7d, toBlock: latest }
-  const [b, names, clears, runs, entries, purchases, settlements, rewards, armoryBalance, gameBurnBps] = await Promise.all([
+  const [b, names, clears, runs, entries, purchases, settlements, rewards, batchLogs, armoryBalance, gameBurnBps] = await Promise.all([
     totalBurned(),
     pub.getLogs({ address: D.names as Hex, event: parseAbi(['event NameClaimed(address indexed who, string name)'])[0], fromBlock: 0n, toBlock: latest }).catch(() => []),
     pub.getContractEvents({ address: D.quest as Hex, abi: questAbi, eventName: 'LevelCleared', ...recent }).catch(() => []),
@@ -37,6 +37,7 @@ export async function homeStats() {
     pub.getContractEvents({ address: D.game as Hex, abi: gameAbi, eventName: 'Bought', ...recent }).catch(() => []),
     pub.getContractEvents({ address: D.game as Hex, abi: gameAbi, eventName: 'Settled', ...recent }).catch(() => []),
     D.armory ? pub.getContractEvents({ address: D.armory as Hex, abi: armoryAbi, eventName: 'Rewarded', ...recent }).catch(() => []) : Promise.resolve([]),
+    pub.getLogs({ event: parseAbi(['event Executed(uint256 nonce, uint256 calls)'])[0], fromBlock: from7d, toBlock: latest }).catch(() => []),
     D.armory ? pub.readContract({ address: D.wif as Hex, abi: wifAbi, functionName: 'balanceOf', args: [D.armory as Hex] }).catch(() => 0n) as Promise<bigint> : Promise.resolve(0n),
     pub.readContract({ address: D.game as Hex, abi: gameAbi, functionName: 'burnBps' }).catch(() => 2000n) as Promise<bigint>,
   ])
@@ -56,6 +57,13 @@ export async function homeStats() {
   const prizePoolFunded = entryPool + itemPool
   const prizesPaid = (settlements as any[]).reduce((sum, log) => sum + BigInt(log.args?.prize || 0n), 0n)
   const armoryPaid7d = (rewards as any[]).reduce((sum, log) => sum + BigInt(log.args?.amount || 0n), 0n)
+  const delegateCode = D.accountImpl ? `0xef0100${D.accountImpl.slice(2).toLowerCase()}` : ''
+  const batchAddresses = [...new Set((batchLogs as any[]).map((log) => String(log.address).toLowerCase()))]
+  const delegated = new Set((await Promise.all(batchAddresses.map(async (address) => {
+    const code = await pub.getCode({ address: address as Hex }).catch(() => undefined)
+    return code?.toLowerCase() === delegateCode ? address : ''
+  }))).filter(Boolean))
+  const batches7d = (batchLogs as any[]).filter((log) => delegated.has(String(log.address).toLowerCase())).length
   const observedDays = Number(tip.timestamp - sevenDaysAgo) / 86400
   const runwayDays = armoryPaid7d > 0n && observedDays > 0
     ? Number(armoryBalance) / (Number(armoryPaid7d) / observedDays)
@@ -66,6 +74,7 @@ export async function homeStats() {
     clears: (clears as any[]).length,
     returning7d: returning,
     runs7d: (runs as any[]).length,
+    batches7d,
     prizePoolFunded7d: prizePoolFunded,
     prizesPaid7d: prizesPaid,
     armoryBalance,
