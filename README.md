@@ -114,7 +114,7 @@ npm run dev
 
 Vite serves the app locally (normally at http://localhost:5173).
 
-The production build runs Oxlint, the TypeScript project check, and the Vite production build in sequence.
+The production build runs Oxlint in error-only mode, the TypeScript project check, and the Vite production build in sequence. Run `npm run lint` directly to see non-blocking warnings as well.
 
 Useful app scripts:
 
