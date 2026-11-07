@@ -14,6 +14,10 @@ Zeron is a daily pixel dungeon game powered by **$WIF on Robinhood Chain**.
 
 The Armory's combat rewards and the ranked prize pool are separate: the up-to-30-WIF clear reward is paid from the prefunded Armory pool, while ranked fees fund the daily leaderboard pool. Armory payouts depend on the reward signer being configured and the pool having enough WIF; rewards are not guaranteed if either is unavailable.
 
+## Campaign progression
+
+The campaign now has **12 levels**, each with three distinct enemy types and a themed boss. Enemy health, attack and defence rise as the levels progress. Levels 7–12 are endgame stages and use the existing endgame checkpoint flow; no new contracts or on-chain deployments were added.
+
 ## Network
 
 - **Chain:** Robinhood Chain mainnet (4663)
