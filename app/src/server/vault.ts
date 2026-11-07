@@ -84,7 +84,7 @@ export async function vault(body: any) {
     const ts = Number(body.ts)
     if (!isAddress(addr) || !Number.isFinite(ts) || Math.abs(Date.now() - ts) > 10 * 60_000) throw err(400, 'Bad name-claim data. Try again.')
     const a = getAddress(addr)
-    const message = `Zeron: claim username\\nname: @${name}\\naddress: ${a}\\ntime: ${ts}`
+    const message = `Zeron: claim username\nname: @${name}\naddress: ${a}\ntime: ${ts}`
     const who = await recoverMessageAddress({ message, signature: sig }).catch(() => null)
     if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify wallet ownership for this name.")
     const legacy = await legacyOwner(name)
