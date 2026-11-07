@@ -17,7 +17,7 @@ const BESTIARY: EnemyDef[] = [
 ]
 const BOSS: EnemyDef = { key: 'boss', name: 'The Edge Warden', hp: 44, atk: 8, def: 2, gold: 60 }
 export const ROOMS = 15
-export const MAX_TURNS = 80
+export const MAX_TURNS = 240
 export const BASE = { hp: 60, atk: 6, def: 1 }
 
 function mulberry(seed: number) {
