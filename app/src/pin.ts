@@ -27,7 +27,7 @@ export const hasPin = async (name: string) => !!(await api({ op: 'salt', name })
 export async function claimName(name: string) {
   const acct = privateKeyToAccount(getKey())
   const ts = Date.now()
-  const message = `Zeron: claim username\\nname: @${name}\\naddress: ${acct.address}\\ntime: ${ts}`
+  const message = `Zeron: claim username\nname: @${name}\naddress: ${acct.address}\ntime: ${ts}`
   const sig = await acct.signMessage({ message })
   await api({ op: 'claim', name, addr: acct.address, ts, sig })
 }
