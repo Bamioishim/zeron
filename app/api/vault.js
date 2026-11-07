@@ -18448,8 +18448,7 @@ async function saveWalletName(addr, name) {
   await put(walletPath(addr), body, { access: "private", allowOverwrite: true, addRandomSuffix: false, contentType: "application/json", cacheControlMaxAge: 60 });
 }
 var ZERO = "0x0000000000000000000000000000000000000000";
-var legacyOwner = async (n2) => await pub().readContract({ address: D.names, abi: namesAbi, functionName: "resolve", args: [n2] }).catch(() => ZERO);
-var ownerOf = async (n2) => { const r2 = await loadName(n2); return r2 ? getAddress(r2.addr) : getAddress(await legacyOwner(n2)); };
+var ownerOf = async (n2) => { const r2 = await loadName(n2); return r2 ? getAddress(r2.addr) : ZERO; };
 var mins = (ms) => Math.max(1, Math.ceil(ms / 6e4));
 async function vault(body) {
   const op = String(body?.op || ""), name = String(body?.name || "").toLowerCase();
@@ -18458,14 +18457,13 @@ async function vault(body) {
     const addr = getAddress(body.addr);
     const stored = await loadWalletName(addr);
     if (stored?.name) return { name: stored.name };
-    const legacy = await pub().readContract({ address: D.names, abi: namesAbi, functionName: "nameOf", args: [addr] }).catch(() => "");
-    return { name: String(legacy || "") };
+    return { name: "" };
   }
   if (!nameRe.test(name)) throw err(400, "Names are 3\u201315 characters: a\u2013z, 0\u20139 and _.");
   if (op === "lookup") {
     const stored = await loadName(name);
-    const owner = stored?.addr || await legacyOwner(name);
-    return { exists: !!owner && getAddress(owner) !== ZERO, addr: owner || ZERO };
+    const owner = stored?.addr || ZERO;
+    return { exists: !!owner && getAddress(owner) !== ZERO, addr: owner };
   }
   if (op === "claim") {
     const { addr, sig } = body;
@@ -18475,8 +18473,6 @@ async function vault(body) {
     const message = `Zeron: claim username\nname: @${name}\naddress: ${a}\ntime: ${ts}`;
     const who = await recoverMessageAddress({ message, signature: sig }).catch(() => null);
     if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify wallet ownership for this name.");
-    const legacy = await legacyOwner(name);
-    if (legacy !== ZERO && getAddress(legacy) !== a) throw err(409, `@${name} is already taken.`);
     const existing = await loadName(name);
     if (existing && getAddress(existing.addr) !== a) throw err(409, `@${name} is already taken.`);
     if (!existing) {
@@ -18504,7 +18500,7 @@ async function vault(body) {
     if (await ownerOf(name) !== a) throw err(403, `@${name} isn't registered to this wallet, so you can't set its PIN.`);
     const prev = await load(name);
     if (prev && prev.lockUntil > Date.now()) throw err(423, `@${name} is locked after too many wrong PINs. Try again in ${mins(prev.lockUntil - Date.now())} min.`);
-    await save(n, { v: 1, addr: a, salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() });
+    await save(name, { v: 1, addr: a, salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() });
     return { ok: true };
   }
   if (op === "login") {
@@ -18565,7 +18561,7 @@ async function vault(body) {
     if (!isAddress(addr) || getAddress(addr) !== getAddress(r.addr) || !hexRe(32).test(salt) || !hexRe(64).test(verifier) || !hexRe(24).test(iv) || !hexRe().test(ct) || ct.length > 400 || !hexRe(64).test(auth)) throw err(400, "Bad reset data.");
     if (toHex(sha256(Buffer.from(auth.slice(2), "hex"))) !== r.rverifier) throw err(401, "Wrong recovery answer.");
     if (await ownerOf(name) !== getAddress(r.addr)) throw err(409, `@${name} is no longer registered to this wallet.`);
-    await save(n, { ...r, salt, verifier, iv, ct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() });
+    await save(name, { ...r, salt, verifier, iv, ct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() });
     return { ok: true };
   }
   throw err(400, "unknown op");
