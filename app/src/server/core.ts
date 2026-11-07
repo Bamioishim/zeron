@@ -78,6 +78,8 @@ export async function signRun(body: { player: string; event?: boolean; day?: num
   body.day = Number(body.day)
   const today = Number(await p.readContract({ address: D.game as Hex, abi: gameAbi, functionName: 'today' }))
   if (body.day !== today) throw new Error('wrong day')
+  const lastRunDay = Number(await p.readContract({ address: D.game as Hex, abi: gameAbi, functionName: 'lastRunDay', args: [player] }))
+  if (lastRunDay === today) throw new Error('daily challenge already played today')
   const r = body.events ? rtReplay({ kind: 'daily', day: body.day }, body.loadout, body.events, g, arms.w, arms.ammo) : replay(body.day, body.loadout, body.moves || [], g)
   const nonce = await p.readContract({ address: D.game as Hex, abi: gameAbi, functionName: 'nonces', args: [player] })
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600)
