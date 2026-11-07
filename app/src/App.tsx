@@ -267,12 +267,12 @@ function ProfilePanel({ me, d, busy, act, approveIfNeeded, setToast }: any) {
     if (!nameRe.test(n)) { setNotice('Use a valid Zeron @name (3–15 characters).'); return }
     setChecking(true); setNotice('')
     try {
-      const owner = await pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }) as string
-      if (!owner || owner === ZERO) { setNotice(`@${n} is not a registered on-chain account.`); return }
+      const owner = await lookupName(n)
+      if (!owner || owner === ZERO) { setNotice(`@${n} is not registered in Zeron.`); return }
       if (owner.toLowerCase() === account().address.toLowerCase()) { setNotice("That's your own account."); return }
       setFriends(prev => [...prev.filter(f => f.name !== n), { name: n, address: owner }])
-      setFriendName(''); setNotice(`Verified @${n} on Robinhood Chain.`)
-    } catch { setNotice("Couldn't verify that @name on-chain. Try again.") }
+      setFriendName(''); setNotice(`Verified @${n} in Zeron.`)
+    } catch { setNotice("Couldn't verify that @name right now. Try again.") }
     finally { setChecking(false) }
   }
   return <div className="profile-panel">
