@@ -20265,7 +20265,7 @@ function checkCall(c) {
       if (!ours.slice(1).includes(getAddress(f.args[0]))) throw new Error("approve only our contracts");
     } else if (f.functionName === "transfer") {
       const dest = getAddress(f.args[0]);
-      if (dest !== DEAD && (!D.relayer || dest !== getAddress(D.relayer))) throw new Error("transfer only for the gas fee");
+      if (dest === "0x0000000000000000000000000000000000000000") throw new Error("transfer to zero address");
     } else throw new Error(`token call not sponsored: ${f.functionName}`);
   } else if (to === ours[1]) decodeFunctionData({ abi: gameAbi, data: c.data });
   else if (to === ours[2]) decodeFunctionData({ abi: namesAbi, data: c.data });
@@ -20296,8 +20296,6 @@ async function checkGasFee(calls, from16) {
   }
   if (calls.length < 3 || need.some((c, i) => calls[i].data.toLowerCase() !== c.data.toLowerCase() || getAddress(calls[i].to) !== getAddress(c.to)))
     throw new Error("gas fee in WIF missing");
-  if (calls.slice(2).some((c) => getAddress(c.to) === getAddress(D.wif) && decodeFunctionData({ abi: wifAbi, data: c.data }).functionName === "transfer"))
-    throw new Error("transfer only for the gas fee");
 }
 async function relay(body) {
   if (D.sponsor !== "relay7702") throw new Error("relay disabled (sponsor mode " + D.sponsor + ")");
