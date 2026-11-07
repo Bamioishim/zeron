@@ -16,7 +16,7 @@ const BESTIARY: EnemyDef[] = [
   { key: 'golem', name: 'Moss Golem', hp: 28, atk: 5, def: 3, gold: 20 },
 ]
 const BOSS: EnemyDef = { key: 'boss', name: 'The Edge Warden', hp: 44, atk: 8, def: 2, gold: 60 }
-export const ROOMS = 5
+export const ROOMS = 15
 export const MAX_TURNS = 80
 export const BASE = { hp: 60, atk: 6, def: 1 }
 
@@ -79,13 +79,27 @@ export function dayNow(nowMs = Date.now()) { return Math.floor(nowMs / 86400000)
 export function dungeonFor(day: number): EnemyDef[] {
   const r = mulberry(day * 7919 + 17)
   const rooms: EnemyDef[] = []
+  // Four existing enemy families rotate through a 14-fight gauntlet. The
+  // seeded order changes each day, while stats climb steadily toward the boss.
+  let previous = -1
   for (let i = 0; i < ROOMS - 1; i++) {
-    const pool = BESTIARY.slice(0, Math.min(BESTIARY.length, 2 + i))
-    const e = pool[Math.floor(r() * pool.length)]
+    let pick = Math.floor(r() * BESTIARY.length)
+    if (pick === previous) pick = (pick + 1 + Math.floor(r() * (BESTIARY.length - 1))) % BESTIARY.length
+    previous = pick
+    const base = BESTIARY[pick]
+    const tier = i + 1
+    const names = ['Cave Scout', 'Mire Stalker', 'Crypt Raider', 'Stone Sentinel']
     const bump = Math.floor(r() * 3)
-    rooms.push({ ...e, hp: e.hp + bump * 2 + i * 2, atk: e.atk + (i >= 3 ? 1 : 0) })
+    rooms.push({
+      ...base,
+      name: `${names[pick]} · ${tier}`,
+      hp: base.hp + tier * 3 + bump * 2,
+      atk: base.atk + Math.floor(tier / 4),
+      def: base.def + Math.floor(tier / 6),
+      gold: base.gold + tier * 2,
+    })
   }
-  rooms.push({ ...BOSS, hp: BOSS.hp + Math.floor(r() * 6) })
+  rooms.push({ ...BOSS, hp: BOSS.hp + 28 + Math.floor(r() * 12), atk: BOSS.atk + 3, def: BOSS.def + 2, name: 'The Daily Warden' })
   return rooms
 }
 
