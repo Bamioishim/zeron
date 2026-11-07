@@ -354,3 +354,29 @@ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
   .stats-grid span{font-size:9px;line-height:1.25}
   .menu-panel{overflow-x:hidden}
 }
+
+
+/* Mobile account actions: no clipped dropdown; profile and stats are always visible. */
+.menu-wrap{display:flex;align-items:center;gap:6px;position:relative;z-index:90}
+.menu-profile-btn,.menu-stats-btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 12px;border:1px solid rgba(212,252,80,.5);border-radius:9px;background:#0a0c08;color:var(--lime);font:11px 'Silkscreen',monospace;white-space:nowrap;cursor:pointer}
+.menu-stats-btn{border-color:var(--line);background:var(--panel);color:var(--ink)}
+.menu-profile-btn:active,.menu-stats-btn:active{background:#202318}
+.menu-overlay{position:fixed;inset:0;z-index:10000;width:100vw;height:100dvh;overflow-y:auto;overflow-x:hidden;display:flex;align-items:center;justify-content:center;padding:12px;overscroll-behavior:contain}
+.menu-panel{width:min(760px,calc(100vw - 24px));max-height:calc(100dvh - 24px);margin:auto;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.profile-panel,.profile-panel .card,.profile-panel .friend-add,.profile-panel .at-input{min-width:0;max-width:100%}
+.profile-panel .card{padding:14px}
+.profile-panel input{width:100%;min-width:0}
+@media(max-width:760px){
+  .menu-overlay{align-items:flex-start;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 10px) 10px calc(env(safe-area-inset-bottom,0px) + 10px)}
+  .menu-panel{width:100%;max-width:560px;max-height:calc(100dvh - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px) - 20px);margin:0 auto;padding:12px}
+  .profile-panel{width:100%;gap:10px}
+  .profile-self{width:100%;overflow-wrap:anywhere}
+  .friend-add{width:100%;flex-wrap:wrap}
+  .friend-add .at-input{flex:1 1 100%;width:100%}
+  .friend-actions{max-width:100%}
+}
+@media(max-width:390px){
+  .menu-profile-btn,.menu-stats-btn{padding:8px 9px;font-size:10px}
+  .menu-panel{padding:10px}
+  .profile-panel .card{padding:12px}
+}
