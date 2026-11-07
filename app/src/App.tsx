@@ -35,6 +35,7 @@ export function friendly(e: any): string {
     [/name: already/i, 'You already have an @name.'],
     [/insufficient|exceeds balance|transferFrom|ERC20/i, "You don't have enough WIF for that. Claim your welcome gift at the Market, earn some in the dungeon, or get $wif sent to your @name."],
     [/allowance/i, 'WIF approval missing. Try again.'],
+    [/daily challenge already played/i, "You've already used today's Daily Challenge. Come back after the daily reset."],
     [/already entered|entered/i, "You've already entered today's ranked run."],
     [/used|nonce/i, 'That result was already recorded.'],
     [/expired|deadline/i, 'That took too long. Try again.'],
