@@ -9,12 +9,6 @@ export const ITEMS: Record<ItemId, { name: string; blurb: string }> = {
 }
 export type Special = 'charge' | 'heal' | 'shell' | 'double' | 'mixed' | 'split' | 'summon' | 'bone' | 'fire' | 'raise' | 'slam' | 'grab'
 export interface EnemyDef { key: string; name: string; hp: number; atk: number; def: number; gold: number; special?: Special; blurb?: string; move?: string }
-const BESTIARY: EnemyDef[] = [
-  { key: 'slime', name: 'Flat Slime', hp: 14, atk: 3, def: 0, gold: 8 },
-  { key: 'bat', name: 'Cave Bat', hp: 10, atk: 5, def: 0, gold: 10 },
-  { key: 'skull', name: 'Rattle Skull', hp: 20, atk: 4, def: 2, gold: 14 },
-  { key: 'golem', name: 'Moss Golem', hp: 28, atk: 5, def: 3, gold: 20 },
-]
 const BOSS: EnemyDef = { key: 'boss', name: 'The Edge Warden', hp: 44, atk: 8, def: 2, gold: 60 }
 export const ROOMS = 15
 export const MAX_TURNS = 240
@@ -80,24 +74,25 @@ export function dayNow(nowMs = Date.now()) { return Math.floor(nowMs / 86400000)
 export function dungeonFor(day: number): EnemyDef[] {
   const r = mulberry(day * 7919 + 17)
   const rooms: EnemyDef[] = []
-  // Four existing enemy families rotate through a 14-fight gauntlet. The
-  // seeded order changes each day, while stats climb steadily toward the boss.
-  let previous = -1
+  // Build a daily roster from campaign enemies, then shuffle it with the day seed.
+  // Each of the 14 regular fights has a different enemy sprite/type; the Warden is the final boss.
+  const unique = new Map<string, { key: string; name: string }>()
+  for (const level of LEVELS) for (const [key, name] of level.minions) if (!unique.has(key)) unique.set(key, { key, name })
+  const pool = [...unique.values()]
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1))
+    ;[pool[i], pool[j]] = [pool[j], pool[i]]
+  }
   for (let i = 0; i < ROOMS - 1; i++) {
-    let pick = Math.floor(r() * BESTIARY.length)
-    if (pick === previous) pick = (pick + 1 + Math.floor(r() * (BESTIARY.length - 1))) % BESTIARY.length
-    previous = pick
-    const base = BESTIARY[pick]
+    const base = pool[i]
     const tier = i + 1
-    const names = ['Cave Scout', 'Mire Stalker', 'Crypt Raider', 'Stone Sentinel']
     const bump = Math.floor(r() * 3)
     rooms.push({
       ...base,
-      name: `${names[pick]} · ${tier}`,
-      hp: base.hp + tier * 3 + bump * 2,
-      atk: base.atk + Math.floor(tier / 4),
-      def: base.def + Math.floor(tier / 6),
-      gold: base.gold + tier * 2,
+      hp: 12 + Math.floor(r() * 10) + tier * 3 + bump * 2,
+      atk: 3 + Math.floor(r() * 3) + Math.floor(tier / 4),
+      def: Math.floor(tier / 6),
+      gold: 8 + tier * 2,
     })
   }
   rooms.push({ ...BOSS, hp: BOSS.hp + 28 + Math.floor(r() * 12), atk: BOSS.atk + 3, def: BOSS.def + 2, name: 'The Daily Warden' })
