@@ -1014,7 +1014,7 @@ function RunStart({ me, d, day, busy, act, approveIfNeeded, loadout, setLoadout,
             <button key={i} className={'item ' + (count(i) ? 'sel' : '')} onClick={() => toggle(i)} disabled={!(inv[i] > 0)}>
               <Sprite name={{ 1: 'potion', 2: 'whet', 3: 'ward', 4: 'potion' }[i]!} size={26} /><div><b>{ITEMS[i].name}</b> <span className="dim">×{inv[i] || 0}{count(i) ? ` · taking ${count(i)}` : ''}</span></div>
             </button>))}
-          <p className="fine">15 enemies · one attempt per day · up to <b className="limet">30 WIF</b> for a full clear. The WIF reward comes from the separate, prefunded Armory pool; ranked entry fees fund the leaderboard prize pool.</p>
+          <p className="fine">15 enemies · one ranked attempt per day · up to <b className="limet">30 WIF</b> for a full clear when reward signing is configured and the Armory pool has funds. Ranked entry fees separately fund the leaderboard prize pool.</p>
           <div className="row">
             {me.playedToday ? <button className="btn lime" disabled>✓ Today's challenge completed</button>
               : me.entered ? <button className="btn lime" onClick={() => begin({ kind: 'daily', day }, true, loadout)}>▶ Start Daily Challenge</button>
