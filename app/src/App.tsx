@@ -141,15 +141,14 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge, st
   const [done, setDone] = useState<{ name: string; pinErr?: string } | null>(null)
   const [err, setErr] = useState('')
   const [taken, setTaken] = useState<string[]>([])
+  const [savingName, setSavingName] = useState(false)
   const L = useNameLookup(name)
-  const fee: bigint = 0n
   const isTaken = taken.includes(name) || (L.n === name && !L.loading && !!L.owner && L.owner !== ZERO)
   const free = nameRe.test(name) && !L.loading && L.n === name && L.owner === ZERO && !taken.includes(name)
   const pinOk = pinRe.test(pin) && pin === pin2 && answer.trim().length >= 2
   const ok = free && pinOk
   const hint = !name ? '3–15 characters: a–z, 0–9, _' : !nameRe.test(name) ? (name.length < 3 ? 'At least 3 characters.' : 'Only a–z, 0–9 and _ (max 15).') : isTaken ? `@${name} is already taken — try another` : L.loading || L.n !== name ? 'Checking…' : L.owner === undefined ? "Couldn't check right now." : `✓ @${name} is free`
   if (login) return <PinLogin onBack={() => setLogin(false)} />
-  const [savingName, setSavingName] = useState(false)
   const claim = async (e?: any) => {
     e?.preventDefault?.(); e?.stopPropagation?.(); setErr('')
     if (!ok || savingName) return
@@ -1163,7 +1162,7 @@ function Send({ me, d, busy, act, approveIfNeeded, setToast, initialName = '', c
   return (
     <section className="grid2">
       {!compact && <div className="card">
-        {me.name && !rename ? <><div className="eyebrow">Your @name</div><h2>@{me.name}</h2><p className="fine">This is your identity everywhere in Zeron.</p><button className="linkbtn" onClick={() => setRename(true)}>Change name ({fmt(d.nameFee)} WIF)</button></>
+        {me.name && !rename ? <><div className="eyebrow">Your @name</div><h2>@{me.name}</h2><p className="fine">This is your identity everywhere in Zeron.</p><button className="linkbtn" onClick={() => setRename(true)}>Change name (free)</button></>
           : <NamePick me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} onDone={() => setRename(false)} onSkip={me.name ? () => setRename(false) : undefined} />}
       </div>}
       <div className="card">
@@ -1189,8 +1188,8 @@ function How({ d }: any) {
       <ol>
         <li><b>Log in anywhere.</b> Returning players can choose Log in from the title screen and restore their wallet with @name + PIN. PIN login does not submit a transaction or require the relayer.</li>
         <li><b>Free play every day.</b> One hand-seeded dungeon per day, the same for everyone. Free runs earn XP and keep your streak.</li>
-        <li><b>$wif does the work:</b> the ranked entry ({fmt(d.fee)} WIF), the shop (potions, whetstones, wards), @names, and sending to friends by name.</li>
-        <li><b>Fees.</b> The deployed FeeSink contracts transfer configured fee shares to the dead address. They do not call the token's native supply-reduction function. Current shares: Game and Quest 20%; Names, Shop and Armory 50%; PvP stake 10%. The remainder goes to the relevant prize pool, contract balance or treasury, depending on the action.</li>
+        <li><b>$wif does the work:</b> ranked entry ({fmt(d.fee)} WIF), the shop (potions, whetstones, wards), and on-chain transfers to friends resolved through off-chain @names.</li>
+        <li><b>Fees.</b> The deployed FeeSink contracts transfer configured fee shares to the dead address. They do not call the token's native supply-reduction function. Current shares: Game, Shop and Armory 50%; Quest and PvP stake 10%. Username registration is off-chain. The remainder goes to the relevant prize pool, contract balance or treasury, depending on the action.</li>
         <li><b>Ranked prize loop.</b> 80% of ranked-entry and daily-item fees enter that day's Game prize pool. After the day ends, anyone can settle it and the top ranked player receives the pool. If nobody qualifies, it rolls into the current day. This is separate from the Armory's prefunded kill/level reward balance.</li>
         <li><b>Campaign.</b> Twelve levels, each with three enemy types, rising difficulty and a distinct boss with a special move. Clear each boss to record a checkpoint and unlock the next level.</li>
         <li><b>Forge.</b> Turn iron, hide and glow into a Sword (+ATK), Armor (+DEF) or Charm (+HP), up to tier 3. Each craft costs {fmt(d.craftFee)} WIF per tier: 20% is sent to the dead address; the rest is retained or routed by the Quest contract. Gear counts in every run and in PvP.</li>
