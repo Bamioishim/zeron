@@ -153,9 +153,8 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge, st
     e?.preventDefault?.(); e?.stopPropagation?.(); setErr('')
     if (!ok) return
     const n = name, p = pin
-    const gift = !me.name && D.shop && me.wardrobe && !me.wardrobe.starterUsed ? [tx(D.shop!, shopAbi, 'starter')] : []
     let r: any = null
-    try { r = await act('claim', [...gift, ...(fee > 0n ? approveIfNeeded('N', fee) : []), tx(D.names, namesAbi, 'claim', [n])], me.name ? `You're now @${n} (was @${me.name}).` : `Welcome, @${n}! That's your name everywhere in Zeron.`, true) }
+    try { r = await act('claim', ...(fee > 0n ? approveIfNeeded('N', fee) : []), tx(D.names, namesAbi, 'claim', [n])], me.name ? `You're now @${n} (was @${me.name}).` : `Welcome, @${n}! That's your name everywhere in Zeron.`, true) }
     catch (x: any) {
       const m = friendly(x)
       if (/already taken/i.test(m)) { setTaken((t) => [...t, n]); setErr(`@${n} is already taken — try another`) } else setErr(m)
@@ -391,17 +390,14 @@ export default function App() {
   const needName = deployed && m.name === ''
   const nudge = (why: string) => { if (needName && !nudged.current) { nudged.current = true; setNamePrompt(why); return true } return false }
   const [busy, setBusy] = useState<string>('')
-  // toasts: auto-dismiss after 2.5 s (tap to close early); every tx is kept in the activity list
+  // toasts: auto-dismiss after 2.5 s (tap to close early); transaction details remain available in the toast itself
   const [toast, setToastS] = useState<Act | null>(null)
-  const [acts, setActs] = useState<Act[]>([])
-  const [showActs, setShowActs] = useState(false)
   const tt = useRef<any>(0)
   const setToast = useCallback((t: { msg: string; link?: string; err?: boolean; burned?: bigint | null; gas?: boolean } | null) => {
     clearTimeout(tt.current)
     if (!t) { setToastS(null); return }
     const a: Act = { id: Date.now() + Math.random(), at: Date.now(), ...t }
     setToastS(a); tt.current = setTimeout(() => setToastS(null), 2500)
-    if (t.link || t.err) setActs((x) => [a, ...x].slice(0, 20))
     return a.id
   }, [])
   const [board, setBoard] = useState<any[]>([])
@@ -513,7 +509,6 @@ export default function App() {
       const gasCharged = !freeOnboarding && !!D.relayer && BigInt(D.gasFeeWei || '0') > 0n
       const id = setToast({ msg: ok, link: r.explorer, gas: gasCharged, burned: null })
       burnedIn(r.hash).then((b) => {
-        setToastS((t) => (t && t.id === id ? { ...t, burned: b } : t)); setActs((x) => x.map((a) => (a.id === id ? { ...a, burned: b } : a)))
       }).catch(() => {})
       await refresh(); return r
     }
@@ -525,7 +520,6 @@ export default function App() {
     const to = spender === 'G' ? D.game : spender === 'N' ? D.names : spender === 'S' ? D.shop : (D as any).quest
     return (cur ?? 0n) >= need ? [] : [tx(D.wif, wifAbi, 'approve', [to, maxUint256])]
   }
-  const starter = () => act('starter', [tx(D.shop!, shopAbi, 'starter')], `Welcome gift: ${D.starter ?? 5} WIF is in your wallet.`)
 
   const sw = useRef<{ x: number; y: number } | null>(null)
   const TABS: Tab[] = ['world', 'board', 'burn', 'how']
@@ -546,8 +540,6 @@ export default function App() {
           <div className="chip lime"><Sprite name="coin" size={14} /> {fmt(m.wif)} WIF</div>
           <button className="chip burnchip" onClick={() => setTab('burn')} title="Total WIF destroyed by FeeSink contracts, read on-chain">🔥 {fmt(d.burnedAll)} destroyed</button>
           <div className="chip dim" title="You never need ETH. Zeron pays the gas.">⛽ 0 ETH · gas by Zeron</div>
-          <button className="chip" onClick={() => setShowActs((v) => !v)} title="Your recent transactions">≡ Activity{acts.length ? ` (${acts.length})` : ''}</button>
-          {D.shop && m.wardrobe && !m.wardrobe.starterUsed && <button className="chip lime gift" disabled={!!busy} onClick={starter}>{busy === 'starter' ? '…' : `🎁 Claim ${D.starter ?? 5} WIF`}</button>}
         </div>
       </header>
       {!deployed && <div className="banner">Contracts aren't live yet, so this is practice mode.</div>}
@@ -556,7 +548,6 @@ export default function App() {
       </nav>
       <main>
         <div style={{ display: tab === 'world' ? 'block' : 'none' }}>
-          <Game nudge={nudge} day={day} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} player={me} setToast={setToast} refresh={refresh} loadFighters={loadFighters} active={tab === 'world'} starter={starter} setTab={setTab} />
         </div>
         {tab === 'board' && <Board d={d} board={board} me={me} day={day} busy={busy} act={act} reload={loadBoard} heroes={heroes} burns={burns} reloadBurns={loadBurns} />}
         {tab === 'burn' && <BurnPanel tot={burnTot} burns={burns} reload={() => { refresh(); loadBurns() }} d={d} />}
@@ -569,11 +560,6 @@ export default function App() {
         {toast.gas && <div className="toast-sub">⛽ Gas: 0.2 WIF (0.1 to dead address + 0.1 to relayer) · FeeSink destroyed: {toast.burned === null || toast.burned === undefined ? '…' : fmt(toast.burned)}</div>}
       </div>}
       {menuView && <MenuPanel view={menuView} onClose={() => setMenuView(null)} stats={stats} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}
-      {showActs && <div className="acts card" onClick={(e) => e.stopPropagation()}>
-        <div className="mhead"><span className="eyebrow">Activity</span><button className="btn sm" onClick={() => setShowActs(false)}>✕</button></div>
-        {acts.length === 0 && <div className="fine dim">No transactions yet this session.</div>}
-        {acts.map((a) => <div key={a.id} className={'actrow ' + (a.err ? 'bad' : '')}><span className="dim">{new Date(a.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><span>{a.msg}{a.gas && <small className="dim"> · gas 0 ETH · FeeSink destroyed {a.burned === null || a.burned === undefined ? '…' : fmt(a.burned)} WIF</small>}</span>{a.link && <a href={a.link} target="_blank" rel="noreferrer">tx ↗</a>}</div>)}
-      </div>}
       <footer>Created by Bamio for the World is Flat hackathon</footer>
     </div>
   )
@@ -582,7 +568,6 @@ export default function App() {
 /* ------------------------------ the walkable game: fights happen right on the map ------------------------------ */
 const FXTEXT: Partial<Record<Fx, string>> = { feint: 'FEINT', heal: 'HEALS', shell: 'HARDENS', stun: 'STUNNED', canfinish: 'FINISH!' }
 type Num = { id: number; x: number; y: number; v?: number; txt?: string; cls: string }
-function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast, refresh, loadFighters, active, starter, setTab }: any) {
   const [townFull, setTownFull] = useState(true)
   const town = useMemo(() => townMap(), [])
   const [mode, setMode] = useState<Mode | null>(null)
@@ -1028,8 +1013,6 @@ function RunStart({ me, d, day, busy, act, approveIfNeeded, loadout, setLoadout,
   )
 }
 
-/** one Shop: consumables, weapons (with inventory + equip), wardrobe, starter gift */
-function ShopPanel({ me, d, busy, act, approveIfNeeded, starter, initTab }: any) {
   const [tab, setTab] = useState<'weapons' | 'items' | 'wardrobe'>(initTab || 'weapons')
   const arms = me.arms || { mask: 0, eq: 0, ammo: 0 }
   const owns = (i: number) => i === 0 || ((arms.mask >> i) & 1) === 1
@@ -1048,7 +1031,6 @@ function ShopPanel({ me, d, busy, act, approveIfNeeded, starter, initTab }: any)
     <div className="shop2">
       <div className="row stabs">{(['weapons', 'items', 'wardrobe'] as const).map((t) => <button key={t} className={'btn sm' + (tab === t ? ' lime' : '')} onClick={() => setTab(t)}>{{ weapons: '⚔ Weapons', items: '✚ Potions & items', wardrobe: '👘 Wardrobe' }[t]}</button>)}
         <span className="fine dim">You have {fmt(me.wif)} WIF</span></div>
-      {me.wardrobe && !me.wardrobe.starterUsed && <div className="item gift"><b>🎁 New here?</b><span className="fine">{D.starter ?? 5} WIF, once per wallet.</span><button className="btn lime sm" disabled={!!busy} onClick={starter}>{busy === 'starter' ? '…' : `Claim ${D.starter ?? 5} WIF`}</button></div>}
       {tab === 'weapons' && <>
         {!A && <p className="fine">Weapons are not deployed on this network yet.</p>}
         <div className="eyebrow">Inventory · tap to equip (your weapon special, key L)</div>
@@ -1093,7 +1075,6 @@ function BurnPanel({ tot, burns, reload }: any) {
         <div className="eyebrow">Total WIF destroyed by FeeSink contracts (read on-chain)</div>
         <div className="burnbig">🔥 {tot ? fmt(tot.total) : '…'} <small>WIF</small></div>
         <div className="parts">{tot?.parts.map((p: any) => <a key={p.addr} href={`${EXPLORER}/address/${p.addr}`} target="_blank" rel="noreferrer" className="chip">{p.label}: {fmt(p.v)}</a>)}</div>
-        <p className="fine">Players do not need ETH. A standard sponsored batch costs 0.2 WIF: 0.1 goes to the dead address and 0.1 repays the relayer. The first starter grant and first @name claim are free onboarding exceptions. FeeSink totals above count contract fee destruction only; they do not include the separate gas-fee transfers.</p>
       </div>
       <div className="card span2">
         <div className="mhead"><span className="eyebrow">Live mainnet burn transactions <small className="live-label">● auto-refresh · 15s</small></span><button className="btn sm" onClick={reload}>Refresh</button></div>
@@ -1203,12 +1184,11 @@ function How({ d }: any) {
     <section className="card how">
       <h2>How it works</h2>
       <ol>
-        <li><b>Zero ETH needed.</b> Your game wallet is created in your browser. When you make an on-chain move, it signs the exact request and our sponsor submits it and pays ETH gas using EIP-7702. A standard sponsored batch costs 0.2 WIF: 0.1 goes to the dead address and 0.1 goes to the relayer. The starter grant and first @name claim are free onboarding exceptions. $wif powers the game.</li>
+        <li><b>Log in anywhere.</b> Returning players can choose Log in from the title screen and restore their wallet with @name + PIN. PIN login does not submit a transaction or require the relayer.</li>
         <li><b>Free play every day.</b> One hand-seeded dungeon per day, the same for everyone. Free runs earn XP and keep your streak.</li>
         <li><b>$wif does the work:</b> the ranked entry ({fmt(d.fee)} WIF), the shop (potions, whetstones, wards), @names, and sending to friends by name.</li>
         <li><b>Fees.</b> The deployed FeeSink contracts transfer configured fee shares to the dead address. They do not call the token's native supply-reduction function. Current shares: Game and Quest 20%; Names, Shop and Armory 50%; PvP stake 10%. The remainder goes to the relevant prize pool, contract balance or treasury, depending on the action.</li>
         <li><b>Ranked prize loop.</b> 80% of ranked-entry and daily-item fees enter that day's Game prize pool. After the day ends, anyone can settle it and the top ranked player receives the pool. If nobody qualifies, it rolls into the current day. This is separate from the Armory's prefunded kill/level reward balance.</li>
-        <li><b>Levels.</b> Walk out of town through the Dungeon Gate. Five levels, each a few rooms and an original boss with a special move. Clear a boss and the server signs a checkpoint that you record on-chain (free), which unlocks the next level and gives you crafting materials.</li>
         <li><b>Forge.</b> Turn iron, hide and glow into a Sword (+ATK), Armor (+DEF) or Charm (+HP), up to tier 3. Each craft costs {fmt(d.craftFee)} WIF per tier: 20% is sent to the dead address; the rest is retained or routed by the Quest contract. Gear counts in every run and in PvP.</li>
         <li><b>Arena.</b> Register your fighter after clearing level 1, then challenge players or the six NPCs. Each challenge stakes {fmt(d.pvpStake)} WIF. Win and you get 90% back; lose and the defender (or the prize pool, for NPCs) gets 90%. 10% of the stake is sent to the dead address. Defending is free. Your stake locks first; then our server signs the duel and its signature becomes the seed, so the outcome can't be predicted or rerolled. If a duel is ever stuck for an hour, you can take your stake back.</li>
         <li><b>Score verification.</b> Runs are deterministic. The server replays your exact moves before signing a score, and the contract accepts each signature only once. This is a practical anti-cheat step because the browser cannot simply submit an arbitrary score, but it still trusts the replay service and signer. Planned upgrades: publish replay inputs, enable independent replay checks, add a dispute window, and make reward claims independently verifiable.</li>
