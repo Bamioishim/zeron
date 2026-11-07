@@ -986,12 +986,12 @@ function RunStart({ me, d, day, busy, act, approveIfNeeded, loadout, setLoadout,
   const enter = () => act('enter', [...approveIfNeeded('G', d.fee ?? 0n), tx(D.game, gameAbi, 'enterRanked')], `Entered today's ranked run. ${fmt(d.fee)} WIF paid, ${(d.burnBps ?? 2000) / 100}% sent to the dead address; the rest stays in the prize pool.`)
   const lv = LEVELS[sel - 1]
   const go = () => begin({ kind: 'level', level: sel, salt: Math.floor(Math.random() * 1000) }, false, LEVEL_KIT)
-  useNumKeys((n) => { if (n >= 1 && n <= MAX_LEVEL && (n <= ONCHAIN_MAX_LEVEL ? n <= q.level + 1 : q.level >= ONCHAIN_MAX_LEVEL)) setSel(n) })
+  useNumKeys((n) => { if (n >= 1 && n <= MAX_LEVEL && n <= q.level + 1) setSel(n) })
   useEffect(() => { const h = (e: KeyboardEvent) => { if (e.key === 'Enter') go() }; window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h) })
   return (
     <Panel title="Choose your run" onClose={close}>
       <div className="runstart">
-        <div className="lvls">{LEVELS.map((_l, i) => { const n = i + 1, open = n <= ONCHAIN_MAX_LEVEL ? n <= q.level + 1 : q.level >= ONCHAIN_MAX_LEVEL, done = n <= q.level
+        <div className="lvls">{LEVELS.map((_l, i) => { const n = i + 1, open = n <= q.level + 1, done = n <= q.level
           return <button key={n} className={'lvl' + (sel === n ? ' on' : '') + (open ? '' : ' locked') + (done ? ' done' : '')} disabled={!open} onClick={() => setSel(n)}>
             <span>{open ? n : '🔒'}</span><small>{done ? '✓ cleared' : open ? 'open' : 'locked'}</small></button> })}</div>
         <div className="bossprev">
