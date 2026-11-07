@@ -134,7 +134,7 @@ function SetPin({ name, onDone, onSkip, title }: { name: string; onDone: () => v
   )
 }
 /** onboarding / rename: pick an @name with a live availability check, then a PIN */
-function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge, startLogin }: any) {
+function NamePick({ me, busy, onSkip, onDone, nudge, startLogin }: any) {
   const [name, setName] = useState('')
   const [pin, setP] = useState(''), [pin2, setP2] = useState(''), [question, setQuestion] = useState(RECOVERY_QUESTIONS[0]), [answer, setAnswer] = useState('')
   const [login, setLogin] = useState(!!startLogin)
@@ -1145,7 +1145,7 @@ function Board({ d, board, me, day, busy, act, reload, heroes, burns, reloadBurn
   )
 }
 
-function Send({ me, d, busy, act, approveIfNeeded, setToast, initialName = '', compact = false }: any) {
+function Send({ me, busy, act, setToast, initialName = '', compact = false }: any) {
   const [to, setTo] = useState(initialName); const [amt, setAmt] = useState('10'); const [rename, setRename] = useState(false); const [pinSet, setPinSet] = useState(false); const [loginOpen, setLoginOpen] = useState(false)
   const n = to.trim().replace(/^@/, '').toLowerCase()
   const L = useNameLookup(n)
@@ -1163,7 +1163,7 @@ function Send({ me, d, busy, act, approveIfNeeded, setToast, initialName = '', c
     <section className="grid2">
       {!compact && <div className="card">
         {me.name && !rename ? <><div className="eyebrow">Your @name</div><h2>@{me.name}</h2><p className="fine">This is your identity everywhere in Zeron.</p><button className="linkbtn" onClick={() => setRename(true)}>Change name (free)</button></>
-          : <NamePick me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} onDone={() => setRename(false)} onSkip={me.name ? () => setRename(false) : undefined} />}
+          : <NamePick me={me} busy={busy} onDone={() => setRename(false)} onSkip={me.name ? () => setRename(false) : undefined} />}
       </div>}
       <div className="card">
         <div className="eyebrow">Send $wif by @name</div>
