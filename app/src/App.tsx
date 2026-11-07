@@ -204,7 +204,7 @@ const EXPLORER = D.explorer.replace(/\/$/, '')
 type Modal = Npc['kind'] | null
 
 interface Quest { level: number; sword: number; armor: number; charm: number; iron: number; hide: number; glow: number; registered: boolean; rating: number; wins: number; losses: number }
-interface Me { wif?: bigint; eth?: bigint; name?: string; xp?: bigint; streak?: number; entered?: boolean; items: Record<number, number>; allowG?: bigint; allowN?: bigint; allowQ?: bigint; allowS?: bigint; allowA?: bigint; best?: number; q: Quest; wardrobe?: { mask: number; eq: number; starterUsed: boolean }; arms?: { mask: number; eq: number; ammo: number; earnedToday: bigint } }
+interface Me { wif?: bigint; eth?: bigint; name?: string; xp?: bigint; streak?: number; entered?: boolean; playedToday?: boolean; items: Record<number, number>; allowG?: bigint; allowN?: bigint; allowQ?: bigint; allowS?: bigint; allowA?: bigint; best?: number; q: Quest; wardrobe?: { mask: number; eq: number; starterUsed: boolean }; arms?: { mask: number; eq: number; ammo: number; earnedToday: bigint } }
 interface Day { pool?: bigint; leader?: string; top?: number; fee?: bigint; prices: Record<number, bigint>; destroyed?: bigint; burnBps?: number; useBurn?: boolean; nameFee?: bigint; chainDay?: number; craftFee?: bigint; pvpStake?: bigint; dailyCap?: bigint; burnedAll?: bigint }
 const Q0: Quest = { level: 0, sword: 0, armor: 0, charm: 0, iron: 0, hide: 0, glow: 0, registered: false, rating: 0, wins: 0, losses: 0 }
 
@@ -432,7 +432,7 @@ export default function App() {
         allowQ = a; craftFee = cf; pvpStake = ps
       }
       const liveStreak = Number(lastDay) >= today - 1 ? Number(streak) : 0
-      setM({ wif, eth, name, xp, streak: liveStreak, entered, items: { 1: Number(i1), 2: Number(i2), 3: Number(i3), 4: Number(i4) }, allowG, allowN, allowQ, allowS, best: Number(best), q, wardrobe: wardrobe ?? undefined, arms: arms?.a, allowA: arms?.allow })
+      setM({ wif, eth, name, xp, streak: liveStreak, entered, playedToday: Number(lastDay) === today, items: { 1: Number(i1), 2: Number(i2), 3: Number(i3), 4: Number(i4) }, allowG, allowN, allowQ, allowS, best: Number(best), q, wardrobe: wardrobe ?? undefined, arms: arms?.a, allowA: arms?.allow })
       setD({ pool, leader, top: Number(top), fee, prices: { 1: p1, 2: p2, 3: p3, 4: p4 }, destroyed, burnBps: Number(burnBps), useBurn, nameFee, chainDay: today, craftFee, pvpStake, dailyCap: arms?.dailyCap, burnedAll: tb.total })
       setBurnTot(tb)
     } catch (e) { console.warn(e) }
@@ -1014,12 +1014,13 @@ function RunStart({ me, d, day, busy, act, approveIfNeeded, loadout, setLoadout,
             <button key={i} className={'item ' + (count(i) ? 'sel' : '')} onClick={() => toggle(i)} disabled={!(inv[i] > 0)}>
               <Sprite name={{ 1: 'potion', 2: 'whet', 3: 'ward', 4: 'potion' }[i]!} size={26} /><div><b>{ITEMS[i].name}</b> <span className="dim">×{inv[i] || 0}{count(i) ? ` · taking ${count(i)}` : ''}</span></div>
             </button>))}
+          <p className="fine">15 enemies · one attempt per day · up to <b className="limet">30 WIF</b> for a full clear. The WIF reward comes from the separate, prefunded Armory pool; ranked entry fees fund the leaderboard prize pool.</p>
           <div className="row">
-            <button className="btn" onClick={() => begin({ kind: 'daily', day }, false, loadout)}>Free daily run</button>
-            {me.entered ? <button className="btn lime" onClick={() => begin({ kind: 'daily', day }, true, loadout)}>Ranked run</button>
-              : <button className="btn lime" disabled={!!busy} onClick={enter}>{busy === 'enter' ? 'Entering…' : `Enter ranked · ${fmt(d.fee ?? parseEther('100'))} WIF`}</button>}
+            {me.playedToday ? <button className="btn lime" disabled>✓ Today's challenge completed</button>
+              : me.entered ? <button className="btn lime" onClick={() => begin({ kind: 'daily', day }, true, loadout)}>▶ Start Daily Challenge</button>
+              : <button className="btn lime" disabled={!!busy} onClick={enter}>{busy === 'enter' ? 'Entering…' : `Enter Daily Challenge · ${fmt(d.fee ?? parseEther('100'))} WIF`}</button>}
           </div>
-          <p className="fine">Same dungeon for everyone today. The top ranked score takes the pool.</p>
+          <p className="fine">Same 15-enemy dungeon for everyone today. The top ranked score takes the day's entry-fee pool.</p>
         </details>
       </div>
     </Panel>
