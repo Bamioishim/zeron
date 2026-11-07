@@ -102,13 +102,13 @@ function special(s: RT) {
   const e = roomsFor(s.mode)[s.room], def = e.def + (isBoss(s) ? s.bossDef : 0), base = s.atk + 1
   s.wcd = WCD[s.weapon] ?? 60; s.fx.push('special')
   const W = s.weapon
-  if (W === 5 || W === 7) { s.ammo--; s.proj = W === 5 ? 14 : 10; s.projDmg = W === 5 ? 3 * base + 10 : 2 * base + 4; if (W === 7) { s.burnT = 100; s.burnDmg = 2 }; say(s, W === 5 ? 'Rocket away!' : 'Pumpkin lobbed!'); return }
-  if (W === 4) { s.burnT = 100; s.burnDmg = Math.max(2, Math.ceil(base / 3)); say(s, `${e.name} catches fire!`); return wound(s, Math.max(1, base - def)) }
-  if (W === 3) { say(s, 'Dagger combo!'); for (let i = 0; i < 3 && s.enemyHp > 0; i++) { const r = s.room; wound(s, Math.max(1, Math.ceil(base * 0.55) - Math.floor(def / 2))); if (s.room !== r || s.done) return } return }
-  if (W === 6) { say(s, 'Hammer smash: stunned!'); s.fx.push('stun'); wound(s, Math.max(1, Math.ceil(base * 1.7) - def)); if (!s.done && s.enemyHp > 0) { s.phase = 'stagger'; s.pt = 0; s.plen = 20 } return }
-  if (W === 2) { say(s, 'Spear thrust!'); const was = s.phase === 'wind'; wound(s, Math.max(1, Math.ceil(base * 1.2) - def)); if (was && !s.done && s.enemyHp > 0 && s.kind !== 'heavy') resetFoe(s, false); return }
-  if (W === 1) { say(s, 'Arrow!'); return wound(s, Math.max(1, base - Math.floor(def / 2))) }
-  say(s, 'Wide slash!'); wound(s, Math.max(1, Math.ceil(base * 1.15) - def))
+  if (W === 5 || W === 7) { s.ammo--; s.proj = W === 5 ? 14 : 10; s.projDmg = W === 5 ? Math.ceil(3.2 * base) + 12 : 2 * base + 6; if (W === 7) { s.burnT = 100; s.burnDmg = 2 }; say(s, W === 5 ? 'Rocket away!' : 'Pumpkin lobbed!'); return }
+  if (W === 4) { s.burnT = 100; s.burnDmg = Math.max(2, Math.ceil(base / 2)); say(s, `${e.name} catches fire!`); return wound(s, Math.max(1, base - def)) }
+  if (W === 3) { say(s, 'Dagger combo!'); for (let i = 0; i < 3 && s.enemyHp > 0; i++) { const r = s.room; wound(s, Math.max(1, Math.ceil(base * 0.65) - Math.floor(def / 2))); if (s.room !== r || s.done) return } return }
+  if (W === 6) { say(s, 'Hammer smash: stunned!'); s.fx.push('stun'); wound(s, Math.max(1, Math.ceil(base * 1.9) - def)); if (!s.done && s.enemyHp > 0) { s.phase = 'stagger'; s.pt = 0; s.plen = 20 } return }
+  if (W === 2) { say(s, 'Spear thrust!'); const was = s.phase === 'wind'; wound(s, Math.max(1, Math.ceil(base * 1.4) - def)); if (was && !s.done && s.enemyHp > 0 && s.kind !== 'heavy') resetFoe(s, false); return }
+  if (W === 1) { say(s, 'Arrow!'); return wound(s, Math.max(1, Math.ceil(base * 1.25) - Math.floor(def / 2))) }
+  say(s, 'Wide slash!'); wound(s, Math.max(1, Math.ceil(base * 1.3) - def))
 }
 function finisher(s: RT) {
   const e = roomsFor(s.mode)[s.room], max = foeMax(e.hp)
