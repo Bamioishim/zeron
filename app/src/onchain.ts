@@ -59,7 +59,7 @@ export async function homeStats(): Promise<{ burned: bigint | null; players: num
   ])
   return { burned, players, clears }
 }
-export type BurnRow = { player: string; amount: bigint; sink: string; hash: Hex; block: bigint }
+export type BurnRow = { player: string; amount: bigint; sink: string; hash: Hex; block: bigint; viaBurn: boolean }
 /** recent Destroyed events across every fee sink; the paying player is the 7702 account the tx was sent to */
 export async function recentBurns(limit = 200): Promise<BurnRow[]> {
   const r = await range()
@@ -68,7 +68,7 @@ export async function recentBurns(limit = 200): Promise<BurnRow[]> {
   const pick = all.slice(0, limit)
   const txs = new Map<string, string>()
   await Promise.all([...new Set(pick.map((p) => p.l.transactionHash))].map(async (h) => { try { const t = await pub.getTransaction({ hash: h }); txs.set(h, (t.to || '') as string) } catch { /* skip */ } }))
-  return pick.map((p) => ({ player: txs.get(p.l.transactionHash) || '', amount: p.l.args.amount as bigint, sink: p.label, hash: p.l.transactionHash, block: p.l.blockNumber }))
+  return pick.map((p) => ({ player: txs.get(p.l.transactionHash) || '', amount: p.l.args.amount as bigint, sink: p.label, hash: p.l.transactionHash, block: p.l.blockNumber, viaBurn: Boolean(p.l.args.viaBurn) }))
 }
 export async function wardrobeOf(who: string): Promise<{ mask: number; eq: number; starterUsed: boolean } | null> {
   if (!D.shop) return null
