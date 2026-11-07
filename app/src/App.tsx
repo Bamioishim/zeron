@@ -488,7 +488,18 @@ export default function App() {
       setHeroes(hs.map((h, i) => ({ ...h, burned: per.get(h.player.toLowerCase()) || 0n, eq: wr[i]?.eq ?? 0, mask: wr[i]?.mask ?? 1 })))
     } catch (e) { console.warn('board', e) }
   }, [day, loadFighters])
-  useEffect(() => {\n    if (tab === 'board') {\n      loadBoard()\n      const poll = window.setInterval(loadBurns, 15000)\n      return () => window.clearInterval(poll)\n    }\n    if (tab === 'burn') {\n      loadBurns()\n      const poll = window.setInterval(loadBurns, 15000)\n      return () => window.clearInterval(poll)\n    }\n  }, [tab, loadBoard, loadBurns])
+  useEffect(() => {
+    if (tab === 'board') {
+      loadBoard()
+      const poll = window.setInterval(loadBurns, 15000)
+      return () => window.clearInterval(poll)
+    }
+    if (tab === 'burn') {
+      loadBurns()
+      const poll = window.setInterval(loadBurns, 15000)
+      return () => window.clearInterval(poll)
+    }
+  }, [tab, loadBoard, loadBurns])
 
   async function act(label: string, calls: Call[], ok: string, rethrow = false) {
     if (!deployed) { setToast({ msg: 'Contracts are not deployed yet, so on-chain actions are off. Free play still works.', err: true }); return null }
