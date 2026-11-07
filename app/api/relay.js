@@ -20127,12 +20127,11 @@ var gameAbi = parseAbi([
   "event RunRecorded(address indexed player, uint64 indexed day, uint32 score, uint32 xp, uint32 streak, bool newLeader)"
 ]);
 var shopAbi = parseAbi([
-  "function starter()",
   "function buy(uint8)",
   "function equip(uint8)",
   "function claimDrop(uint8,uint256,bytes)",
   "function price(uint8) view returns (uint256)",
-  "function wardrobe(address) view returns (uint32 mask, uint8 eq, bool starterUsed)",
+  "function wardrobe(address) view returns (uint32 mask, uint8 eq, bool)",
   "function equipped(address) view returns (uint8)",
   "function totalDestroyed() view returns (uint256)",
   "function gotStarter(address) view returns (bool)",
@@ -20282,13 +20281,10 @@ function checkCall(c) {
 }
 var DEAD = getAddress("0x000000000000000000000000000000000000dEaD");
 function isOnboarding(calls) {
-  if (!calls.length || calls.length > 2) return false;
-  return calls.every((c) => {
-    const to = getAddress(c.to);
-    if (D.shop && to === getAddress(D.shop)) return decodeFunctionData({ abi: shopAbi, data: c.data }).functionName === "starter";
-    if (to === getAddress(D.names)) return decodeFunctionData({ abi: namesAbi, data: c.data }).functionName === "claim";
-    return false;
-  });
+  if (calls.length !== 1) return false;
+  const call = calls[0];
+  if (getAddress(call.to) !== getAddress(D.names)) return false;
+  return decodeFunctionData({ abi: namesAbi, data: call.data }).functionName === "claim";
 }
 async function checkGasFee(calls, from16) {
   const need = gasFeeCalls();
@@ -20354,7 +20350,7 @@ async function relay(body) {
   const fee = BigInt(D.gasFeeWei || "0");
   if (fee && !isOnboarding(calls)) {
     const bal = await p.readContract({ address: D.wif, abi: wifAbi, functionName: "balanceOf", args: [from16] });
-    if (bal < fee) throw new Error(`no gas wif: every move costs ${Number(fee) / 1e18} WIF in gas and you have ${Number(bal * 1000n / 10n ** 18n) / 1e3}. Claim your welcome gift first.`);
+    if (bal < fee) throw new Error(`no gas wif: every move costs ${Number(fee) / 1e18} WIF in gas and you have ${Number(bal * 1000n / 10n ** 18n) / 1e3}. Earn WIF in the dungeon or receive WIF from another player.`);
   }
   let gas;
   try {
