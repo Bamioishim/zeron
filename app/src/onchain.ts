@@ -70,9 +70,9 @@ export async function recentBurns(limit = 200): Promise<BurnRow[]> {
   await Promise.all([...new Set(pick.map((p) => p.l.transactionHash))].map(async (h) => { try { const t = await pub.getTransaction({ hash: h }); txs.set(h, (t.to || '') as string) } catch { /* skip */ } }))
   return pick.map((p) => ({ player: txs.get(p.l.transactionHash) || '', amount: p.l.args.amount as bigint, sink: p.label, hash: p.l.transactionHash, block: p.l.blockNumber, viaBurn: Boolean(p.l.args.viaBurn) }))
 }
-export async function wardrobeOf(who: string): Promise<{ mask: number; eq: number; starterUsed: boolean } | null> {
+export async function wardrobeOf(who: string): Promise<{ mask: number; eq: number } | null> {
   if (!D.shop) return null
-  try { const r = await pub.readContract({ address: D.shop, abi: shopAbi, functionName: 'wardrobe', args: [who as Hex] }) as any; return { mask: Number(r[0]), eq: Number(r[1]), starterUsed: r[2] } } catch { return null }
+  try { const r = await pub.readContract({ address: D.shop, abi: shopAbi, functionName: 'wardrobe', args: [who as Hex] }) as any; return { mask: Number(r[0]), eq: Number(r[1]) } } catch { return null }
 }
 export async function shopPrices() {
   if (!D.shop) return {} as Record<number, bigint>
