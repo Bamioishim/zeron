@@ -4,8 +4,6 @@
 import { put, get } from '@vercel/blob'
 import { getAddress, isAddress, recoverMessageAddress, toHex, type Hex } from 'viem'
 import { sha256 } from '@noble/hashes/sha2.js'
-import { D, namesAbi } from '../shared/chain'
-import { pub } from './core'
 import { vaultDigest, vaultMessage } from './vaultmsg'
 
 type Rec = { v: 1; addr: Hex; salt: string; verifier: string; iv: string; ct: string; question?: string; rsalt?: string; rverifier?: string; riv?: string; rct?: string; fails: number; locks: number; lockUntil: number; updated: number }
@@ -56,10 +54,9 @@ async function saveWalletName(addr: string, name: string) {
   await put(walletPath(addr), body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 60 } as any)
 }
 const ZERO = '0x0000000000000000000000000000000000000000' as Hex
-const legacyOwner = async (n: string) => pub().readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }).catch(() => ZERO) as Promise<Hex>
 const ownerOf = async (n: string) => {
   const r = await loadName(n)
-  return r ? getAddress(r.addr) : getAddress(await legacyOwner(n))
+  return r ? getAddress(r.addr) : ZERO
 }
 const mins = (ms: number) => Math.max(1, Math.ceil(ms / 60_000))
 
@@ -70,14 +67,13 @@ export async function vault(body: any) {
     const addr = getAddress(body.addr)
     const stored = await loadWalletName(addr)
     if (stored?.name) return { name: stored.name }
-    const legacy = await pub().readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'nameOf', args: [addr] }).catch(() => '')
-    return { name: String(legacy || '') }
+    return { name: '' }
   }
   if (!nameRe.test(name)) throw err(400, 'Names are 3–15 characters: a–z, 0–9 and _.')
   if (op === 'lookup') {
     const stored = await loadName(name)
-    const owner = stored?.addr || await legacyOwner(name)
-    return { exists: !!owner && getAddress(owner) !== ZERO, addr: owner || ZERO }
+    const owner = stored?.addr || ZERO
+    return { exists: !!owner && getAddress(owner) !== ZERO, addr: owner }
   }
   if (op === 'claim') {
     const { addr, sig } = body
@@ -87,8 +83,6 @@ export async function vault(body: any) {
     const message = `Zeron: claim username\nname: @${name}\naddress: ${a}\ntime: ${ts}`
     const who = await recoverMessageAddress({ message, signature: sig }).catch(() => null)
     if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify wallet ownership for this name.")
-    const legacy = await legacyOwner(name)
-    if (legacy !== ZERO && getAddress(legacy) !== a) throw err(409, `@${name} is already taken.`)
     const existing = await loadName(name)
     if (existing && getAddress(existing.addr) !== a) throw err(409, `@${name} is already taken.`)
     if (!existing) {
@@ -115,7 +109,7 @@ export async function vault(body: any) {
     if ((await ownerOf(name)) !== a) throw err(403, `@${name} isn't registered to this wallet, so you can't set its PIN.`)
     const prev = await load(name)
     if (prev && prev.lockUntil > Date.now()) throw err(423, `@${name} is locked after too many wrong PINs. Try again in ${mins(prev.lockUntil - Date.now())} min.`)
-    await save(n, { v: 1, addr: a, salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() })
+    await save(name, { v: 1, addr: a, salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() })
     return { ok: true }
   }
   if (op === 'login') {
@@ -161,7 +155,7 @@ export async function vault(body: any) {
     if (!isAddress(addr) || getAddress(addr) !== getAddress(r.addr) || !hexRe(32).test(salt) || !hexRe(64).test(verifier) || !hexRe(24).test(iv) || !hexRe().test(ct) || ct.length > 400 || !hexRe(64).test(auth)) throw err(400, 'Bad reset data.')
     if (toHex(sha256(Buffer.from(auth.slice(2), 'hex'))) !== r.rverifier) throw err(401, 'Wrong recovery answer.')
     if ((await ownerOf(name)) !== getAddress(r.addr)) throw err(409, `@${name} is no longer registered to this wallet.`)
-    await save(n, { ...r, salt, verifier, iv, ct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() })
+    await save(name, { ...r, salt, verifier, iv, ct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() })
     return { ok: true }
   }
   throw err(400, 'unknown op')
