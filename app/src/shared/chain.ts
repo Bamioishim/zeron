@@ -34,7 +34,7 @@ export const gameAbi = parseAbi([
 ])
 export const shopAbi = parseAbi([
   'function buy(uint8)', 'function equip(uint8)', 'function claimDrop(uint8,uint256,bytes)',
-  'function price(uint8) view returns (uint256)', 'function wardrobe(address) view returns (uint32 mask, uint8 eq, bool starterUsed)',
+  'function price(uint8) view returns (uint256)', 'function wardrobe(address) view returns (uint32 mask, uint8 eq, bool)',
   'function equipped(address) view returns (uint8)', 'function totalDestroyed() view returns (uint256)', 'function gotStarter(address) view returns (bool)',
   'event Bought(address indexed who, uint8 id, uint256 price)', 'event Destroyed(uint256 amount, bool viaBurn)',
 ])
