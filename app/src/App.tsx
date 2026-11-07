@@ -9,7 +9,7 @@ import { setCostume } from './game/art'
 import { totalBurned, homeStats, recentBurns, wardrobeOf, shopPrices, burnedIn, arsenalOf, type BurnRow } from './onchain'
 import { ITEMS, scoreOf, dayNow, roomsFor, LEVELS, MAX_LEVEL, ONCHAIN_MAX_LEVEL, LEVEL_KIT, RECIPES, lootFor, statsFor, type ItemId, type Move, type Mode, type EnemyDef } from './shared/engine'
 import { account, pub, sponsored, postRun, getKey, isFreeOnboarding } from './wallet'
-import { hasPin, setPin, loginPin, resetPin, pinRe, RECOVERY_QUESTIONS } from './pin'
+import { hasPin, setPin, loginPin, resetPin, pinRe, RECOVERY_QUESTIONS, claimName, lookupName, nameForAddress } from './pin'
 import { Sprite } from './sprites'
 import World, { type WorldApi } from './game/World'
 import { townMap, dungeonMap, type Npc, type MapDef } from './game/maps'
@@ -67,7 +67,7 @@ function useNameLookup(n: string) {
     if (!nameRe.test(n)) { setSt({ n, loading: false }); return }
     setSt({ n, loading: true }); let live = true
     const t = setTimeout(async () => {
-      const o = await pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }).catch(() => undefined) as string | undefined
+      const o = await lookupName(n).catch(() => undefined)
       if (live) setSt({ n, owner: o, loading: false })
     }, 300)
     return () => { live = false; clearTimeout(t) }
@@ -138,32 +138,32 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge, st
   const [name, setName] = useState('')
   const [pin, setP] = useState(''), [pin2, setP2] = useState(''), [question, setQuestion] = useState(RECOVERY_QUESTIONS[0]), [answer, setAnswer] = useState('')
   const [login, setLogin] = useState(!!startLogin)
-  const [done, setDone] = useState<{ name: string; link: string; pinErr?: string } | null>(null)
+  const [done, setDone] = useState<{ name: string; pinErr?: string } | null>(null)
   const [err, setErr] = useState('')
   const [taken, setTaken] = useState<string[]>([])
   const L = useNameLookup(name)
-  const fee: bigint = me.name ? (d.nameFee ?? 0n) : 0n
+  const fee: bigint = 0n
   const isTaken = taken.includes(name) || (L.n === name && !L.loading && !!L.owner && L.owner !== ZERO)
   const free = nameRe.test(name) && !L.loading && L.n === name && L.owner === ZERO && !taken.includes(name)
   const pinOk = pinRe.test(pin) && pin === pin2 && answer.trim().length >= 2
   const ok = free && pinOk
   const hint = !name ? '3–15 characters: a–z, 0–9, _' : !nameRe.test(name) ? (name.length < 3 ? 'At least 3 characters.' : 'Only a–z, 0–9 and _ (max 15).') : isTaken ? `@${name} is already taken — try another` : L.loading || L.n !== name ? 'Checking…' : L.owner === undefined ? "Couldn't check right now." : `✓ @${name} is free`
   if (login) return <PinLogin onBack={() => setLogin(false)} />
+  const [savingName, setSavingName] = useState(false)
   const claim = async (e?: any) => {
     e?.preventDefault?.(); e?.stopPropagation?.(); setErr('')
-    if (!ok) return
+    if (!ok || savingName) return
     const n = name, p = pin
-    let r: any = null
-    try { r = await act('claim', [...(fee > 0n ? approveIfNeeded('N', fee) : []), tx(D.names, namesAbi, 'claim', [n])], me.name ? `You're now @${n} (was @${me.name}).` : `Welcome, @${n}! That's your name everywhere in Zeron.`, true) }
-    catch (x: any) {
+    setSavingName(true)
+    try {
+      await claimName(n)
+      let pinErr = ''
+      try { await setPin(n, p, question, answer) } catch (x: any) { pinErr = String(x?.message || x) }
+      setDone({ name: n, pinErr })
+    } catch (x: any) {
       const m = friendly(x)
       if (/already taken/i.test(m)) { setTaken((t) => [...t, n]); setErr(`@${n} is already taken — try another`) } else setErr(m)
-      return
-    }
-    if (!r) return
-    let pinErr = ''
-    try { await setPin(n, p, question, answer) } catch (x: any) { pinErr = String(x?.message || x) }
-    setDone({ name: n, link: r.explorer, pinErr })
+    } finally { setSavingName(false) }
   }
   if (done) return done.pinErr
     ? <SetPin name={done.name} title={`You are @${done.name}. PIN not saved yet`} onDone={() => setDone({ ...done, pinErr: '' })} onSkip={() => { setDone(null); onDone?.() }} />
@@ -171,8 +171,7 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge, st
     <div className="namepick" onClick={(e) => e.stopPropagation()}>
       <div className="eyebrow">Name claimed</div>
       <h3 style={{ margin: '6px 0' }}>You are @{done.name}</h3>
-      <p className="fine">PIN saved. Log in with @{done.name} + your PIN on any device.</p>
-      <a className="fine" href={done.link} target="_blank" rel="noreferrer">View transaction ↗</a>
+      <p className="fine">Your name is registered. Log in with @{done.name} + your PIN on any device.</p>
       <button type="button" className="btn lime" onClick={() => { setDone(null); setName(''); onDone?.() }}>Continue</button>
     </div>
   )
@@ -180,7 +179,7 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge, st
     <div className="namepick" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
       <div className="eyebrow">{me.name ? 'Change your @name' : nudge || 'Pick your @name'}</div>
       {!me.name && <p className="fine">Your @name is who you are in Zeron: on the boards, in the arena and when friends send you $wif. Your first name is free.</p>}
-      {me.name && <p className="fine">You're @{me.name}. Renaming costs {fmt(fee)} WIF: half goes to the dead address and half to the treasury. Your old name becomes free for others.</p>}
+      {me.name && <p className="fine">You're @{me.name}. You can register another name without an on-chain transaction. Previous names remain reserved.</p>}
       <div className="at-input"><span>@</span><input autoFocus placeholder="yourname" value={name} autoCapitalize="none" autoCorrect="off" onChange={(e) => { setErr(''); setName(e.target.value.toLowerCase().replace(/\s/g, '')) }} maxLength={15} aria-label="@name" /></div>
       <div className={'fine namehint ' + (free ? 'good' : name && (isTaken || (!L.loading && L.n === name)) ? 'bad' : '')}>{hint}</div>
       {free && <>
@@ -190,7 +189,7 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge, st
         <div className={'fine namehint ' + (pinOk ? 'good' : pin2.length === 4 && pin !== pin2 ? 'bad' : '')}>{pinHint(pin, pin2)}</div>
       </>}
       {err && <div className="fine namehint bad">{err}</div>}
-      <button type="button" className="btn lime" disabled={!ok || !!busy} onClick={claim}>{busy === 'claim' ? 'Claiming…' : isTaken ? 'Name taken' : (me.name ? `Rename to @${name || '…'} · ${fmt(fee)} WIF` : `Claim @${name || '…'} · free`)}</button>
+      <button type="button" className="btn lime" disabled={!ok || !!busy || savingName} onClick={claim}>{savingName ? 'Registering…' : isTaken ? 'Name taken' : (me.name ? `Register @${name || '…'}` : `Claim @${name || '…'} · free`)}</button>
       {!me.name && <button type="button" className="linkbtn" onClick={() => setLogin(true)}>Already have an @name? Log in</button>}
       {onSkip && <button className="linkbtn" onClick={onSkip}>Skip for now</button>}
     </div>
@@ -413,7 +412,7 @@ export default function App() {
       const rc = (address: Hex, abi: any, functionName: string, args: any[] = []) => pub.readContract({ address, abi, functionName, args } as any) as Promise<any>
       const today = Number(await rc(G, gameAbi, 'today'))
       const [wif, eth, name, xp, streak, entered, i1, i2, i3, i4, p4, allowG, allowN, best, pool, leader, top, fee, p1, p2, p3, destroyed, burnBps, useBurn, nameFee, lastDay, allowS, wardrobe, tb] = await Promise.all([
-        rc(W, wifAbi, 'balanceOf', [me]), pub.getBalance({ address: me }), rc(N, namesAbi, 'nameOf', [me]), rc(G, gameAbi, 'xp', [me]), rc(G, gameAbi, 'streak', [me]),
+        rc(W, wifAbi, 'balanceOf', [me]), pub.getBalance({ address: me }), nameForAddress(me), rc(G, gameAbi, 'xp', [me]), rc(G, gameAbi, 'streak', [me]),
         rc(G, gameAbi, 'entered', [BigInt(today), me]), rc(G, gameAbi, 'items', [me, 1]), rc(G, gameAbi, 'items', [me, 2]), rc(G, gameAbi, 'items', [me, 3]), rc(G, gameAbi, 'items', [me, 4]), rc(G, gameAbi, 'itemPrice', [4]),
         rc(W, wifAbi, 'allowance', [me, G]), rc(W, wifAbi, 'allowance', [me, N]), rc(G, gameAbi, 'bestScore', [BigInt(today), me]),
         rc(G, gameAbi, 'pool', [BigInt(today)]), rc(G, gameAbi, 'leader', [BigInt(today)]), rc(G, gameAbi, 'topScore', [BigInt(today)]), rc(G, gameAbi, 'entryFee'),
@@ -449,7 +448,7 @@ export default function App() {
     const addrs = await Promise.all([...Array(n)].map((_, i) => pub.readContract({ address: Qa, abi: questAbi, functionName: 'fighterList', args: [BigInt(i)] })))
     return Promise.all(addrs.map(async (a: any) => {
       const [f, p, name] = await Promise.all([pub.readContract({ address: Qa, abi: questAbi, functionName: 'fighters', args: [a] }) as any, pub.readContract({ address: Qa, abi: questAbi, functionName: 'players', args: [a] }) as any,
-        BigInt(a) < 1000n ? Promise.resolve('') : pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'nameOf', args: [a] })])
+        BigInt(a) < 1000n ? Promise.resolve('') : nameForAddress(String(a))])
       return { player: a as string, atk: f[0], def: f[1], hp: f[2], npc: f[3], rating: f[4], wins: f[5], losses: f[6], level: p[0], name: name as string }
     }))
   }, [])
@@ -468,7 +467,7 @@ export default function App() {
         best.set(l.args.player, Math.max(best.get(l.args.player) || 0, Number(l.args.score)))
       }
       const rows = await Promise.all([...best.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(async ([player, score]) => ({
-        player, score, name: (await pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'nameOf', args: [player as Hex] })) as string })))
+        player, score, name: await nameForAddress(player) })))
       setBoard(rows)
       const [fs, bs] = await Promise.all([loadFighters(), recentBurns().catch(() => [] as BurnRow[])])
       setBurns(bs)
@@ -477,7 +476,7 @@ export default function App() {
       const known = new Set(fs.map((f) => f.player.toLowerCase()))
       const extra = [...per.keys()].filter((a) => !known.has(a)).slice(0, 40)
       const ex = await Promise.all(extra.map(async (a) => {
-        const [p, name] = await Promise.all([Qa ? pub.readContract({ address: Qa, abi: questAbi, functionName: 'players', args: [a as Hex] }).catch(() => [0]) as any : [0], pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'nameOf', args: [a as Hex] }).catch(() => '')])
+        const [p, name] = await Promise.all([Qa ? pub.readContract({ address: Qa, abi: questAbi, functionName: 'players', args: [a as Hex] }).catch(() => [0]) as any : [0], nameForAddress(a).catch(() => '')])
         return { player: getAddress(a), level: Number(p[0]), wins: 0, rating: 0, npc: false, name: name as string }
       }))
       const hs = [...fs.filter((f) => !f.npc), ...ex].map((h) => ({ ...h, b: per.get(h.player.toLowerCase()) || 0n }))
@@ -1157,10 +1156,9 @@ function Send({ me, d, busy, act, approveIfNeeded, setToast, initialName = '', c
   const status = !n ? '' : !nameRe.test(n) ? 'Names are 3–15 characters: a–z, 0–9 and _.' : L.loading || L.n !== n ? 'Looking up…' : L.owner === undefined ? "Couldn't check right now." : L.owner === ZERO ? `No player called @${n} yet` : self ? "That's you." : `✓ @${n} found`
   const low = me.wif !== undefined && v > me.wif
   async function send() {
-    // read-only check first: never send a tx that would revert on an unknown name
-    const o = await pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }).catch(() => undefined) as string | undefined
-    if (!o || o === ZERO) { setToast({ msg: `No player called @${n} yet`, err: true }); return }
-    await act('send', [...approveIfNeeded('N', v), tx(D.names, namesAbi, 'sendToName', [n, v])], `Sent ${amt} WIF to @${n}.`)
+    const owner = await lookupName(n).catch(() => ZERO)
+    if (!owner || owner === ZERO) { setToast({ msg: `No player called @${n} yet`, err: true }); return }
+    await act('send', [tx(D.wif, wifAbi, 'transfer', [owner, v])], `Sent ${amt} WIF to @${n}.`)
   }
   return (
     <section className="grid2">
