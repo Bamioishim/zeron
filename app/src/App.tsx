@@ -595,9 +595,13 @@ type Num = { id: number; x: number; y: number; v?: number; txt?: string; cls: st
   const gear = { level: q.level, sword: q.sword, armor: q.armor, charm: q.charm }
   const runRef = useRef<RT | null>(run); runRef.current = run
   const arms = me.arms || { mask: 0, eq: 0, ammo: 0 }
+  const dailyAttemptKey = `zeron.daily.attempt.${player.toLowerCase()}.${day}`
+  const [dailyAttempted, setDailyAttempted] = useState(false)
+  useEffect(() => { setDailyAttempted(localStorage.getItem(dailyAttemptKey) === '1') }, [dailyAttemptKey])
 
   const engaged = useRef(-1)
   const begin = (md: Mode, r: boolean, lo: ItemId[]) => {
+    if (md.kind === 'daily' && r) { localStorage.setItem(dailyAttemptKey, '1'); setDailyAttempted(true) }
     setFade(true); setModal(null)
     setTimeout(() => {
       const st = rtStart(md, lo, gear, arms.eq, arms.ammo); evs.current = []; queue.current = []
@@ -726,7 +730,7 @@ type Num = { id: number; x: number; y: number; v?: number; txt?: string; cls: st
     }
     begin({ kind: 'level', level: lv + 1, salt: Math.floor(Math.random() * 1000) }, false, LEVEL_KIT)
   }
-  const retry = () => { if (!mode) return
+  const retry = () => { if (!mode || (mode.kind === 'daily' && ranked)) return
     begin(mode.kind === 'daily' ? mode : { ...mode, salt: Math.floor(Math.random() * 1000) } as Mode, mode.kind === 'daily' ? ranked : false, mode.kind === 'daily' ? loadout : LEVEL_KIT) }
   const [shopTab, setShopTab] = useState<string>('weapons')
   const onInteract = (n: Npc) => { setShopTab(n.stall === 'potions' ? 'items' : n.stall === 'tailor' ? 'wardrobe' : 'weapons'); if (n.kind === 'talk') { setToast({ msg: n.line || 'Hello!' }); return } if (n.kind === 'arena' && nudge('Claim an @name before you fight')) return; setModal(n.kind) }
@@ -856,13 +860,13 @@ type Num = { id: number; x: number; y: number; v?: number; txt?: string; cls: st
               ? <button className="btn lime" disabled={!!busy} onClick={() => record()}>{busy === 'record' ? 'Saving…' : mode.kind === 'level' ? 'Save checkpoint + claim WIF (free)' : mode.kind === 'event' ? 'Claim the crown + WIF (free)' : 'Record + claim WIF (free)'}</button>
               : recorded && <a className="btn" href={recorded} target="_blank" rel="noreferrer">View tx ↗</a>)}
             {mode.kind === 'level' && run.cleared && mode.level < MAX_LEVEL && (!recorded ? <button className="btn" disabled={!!busy} onClick={() => record()}>{busy === 'record' ? 'Saving…' : 'Save only'}</button> : <a className="btn" href={recorded} target="_blank" rel="noreferrer">View tx ↗</a>)}
-            {mode.kind === 'daily' && <button className="btn" onClick={retry}>↻ Retry</button>}
+            {mode.kind === 'daily' && !ranked && <button className="btn" onClick={retry}>↻ Retry</button>}
             <button className="btn" onClick={() => { if (mode.kind === 'level' && run.cleared && !recorded) { const ev = evs.current; setBgSave(`Saving L${mode.level} checkpoint…`); saveQ.current = saveQ.current.then(() => record(true, ev)).then((ok) => { setBgSave(ok ? 'Checkpoint saved ✓' : 'Checkpoint save failed'); setTimeout(() => setBgSave(''), 5000) }) } leave() }}>Back to town</button>
           </div>
           {mode.kind === 'daily' && !ranked && <p className="fine">Free run: counts for XP, your streak and WIF earnings, not the leaderboard.</p>}
         </Panel>
       )}
-      {modal === 'gate' && <RunStart me={me} d={d} day={day} busy={busy} act={act} approveIfNeeded={approveIfNeeded} loadout={loadout} setLoadout={setLoadout} begin={begin} close={() => setModal(null)} />}
+      {modal === 'gate' && <RunStart me={me} d={d} day={day} dailyAttempted={dailyAttempted} busy={busy} act={act} approveIfNeeded={approveIfNeeded} loadout={loadout} setLoadout={setLoadout} begin={begin} close={() => setModal(null)} />}
       {modal === 'market' && <Panel title="Shop" onClose={() => setModal(null)}><ShopPanel me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} initTab={shopTab} /></Panel>}
       {modal === 'names' && <Panel title="@Names & Send" onClose={() => setModal(null)}><Send me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} /></Panel>}
       {modal === 'board' && <Panel title="Today's pool" onClose={() => setModal(null)}><div className="pool"><Sprite name="coin" size={18} /> {fmt(d.pool)} WIF in today's prize pool · top score {d.top || '–'}</div><p className="fine">Open the Leaderboard tab for the full boards.</p></Panel>}
@@ -958,7 +962,7 @@ function Bar({ v, max, label, foe }: { v: number; max: number; label: string; fo
   return <div className="bar"><div className={'fill ' + (foe ? 'foe' : '')} style={{ width: `${Math.max(0, (v / max) * 100)}%` }} /><span>{label}</span></div>
 }
 const REC: string[] = ['Any weapon works. Hit King Slime while it wobbles.', 'Block twice when the Chief whistles.', 'Block or parry the bone throw. Sword tier 1+.', 'Parry the charge. Armor tier 1+.', 'Block the fire breath. Fire Staff burn adds up.', 'Interrupt the glow: Twin Daggers or Spear.', 'Armor tier 2+ and potions for the slams.', 'Full kit. Keep energy potions for after a grab.', 'Bring upgraded armor and keep pressure on the Frozen Titan.', 'Use potions efficiently; the Drowned King heals when weakened.', 'Defend against the Ringmaster double strike.', 'Bring a high-tier weapon, armor and spare healing for the final boss.']
-function RunStart({ me, d, day, busy, act, approveIfNeeded, loadout, setLoadout, begin, close }: any) {
+function RunStart({ me, d, day, dailyAttempted, busy, act, approveIfNeeded, loadout, setLoadout, begin, close }: any) {
   const q: Quest = me.q; const next = Math.min(q.level + 1, MAX_LEVEL)
   const [sel, setSel] = useState<number>(next)
   const inv: Record<number, number> = me.items || {}
@@ -1000,9 +1004,10 @@ function RunStart({ me, d, day, busy, act, approveIfNeeded, loadout, setLoadout,
             <button key={i} className={'item ' + (count(i) ? 'sel' : '')} onClick={() => toggle(i)} disabled={!(inv[i] > 0)}>
               <Sprite name={{ 1: 'potion', 2: 'whet', 3: 'ward', 4: 'potion' }[i]!} size={26} /><div><b>{ITEMS[i].name}</b> <span className="dim">×{inv[i] || 0}{count(i) ? ` · taking ${count(i)}` : ''}</span></div>
             </button>))}
-          <p className="fine">15 enemies · one ranked attempt per day · up to <b className="limet">30 WIF</b> for a full clear when reward signing is configured and the Armory pool has funds. Ranked entry fees separately fund the leaderboard prize pool.</p>
+          <p className="fine">15 enemies (14 unique types + the Daily Warden) · one ranked attempt per day · up to <b className="limet">30 WIF</b> for a full clear when reward signing is configured and the Armory pool has funds. Starting the attempt locks it for today. Ranked entry fees separately fund the leaderboard prize pool.</p>
           <div className="row">
             {me.playedToday ? <button className="btn lime" disabled>✓ Today's challenge completed</button>
+              : dailyAttempted ? <button className="btn lime" disabled>✓ Today's attempt already used</button>
               : me.entered ? <button className="btn lime" onClick={() => begin({ kind: 'daily', day }, true, loadout)}>▶ Start Daily Challenge</button>
               : <button className="btn lime" disabled={!!busy} onClick={enter}>{busy === 'enter' ? 'Entering…' : `Enter Daily Challenge · ${fmt(d.fee ?? parseEther('100'))} WIF`}</button>}
           </div>
