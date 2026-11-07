@@ -1124,7 +1124,6 @@ function Board({ d, board, me, day, busy, act, reload, heroes, burns, reloadBurn
           <li><b>Play to earn:</b> +{rewardAmount(3)} WIF per small enemy, +{rewardAmount(10)} WIF per boss, and +{rewardAmount(10)} WIF per level clear at the current mainnet reward scale. Paid from the prefunded Armory pool (not minted), up to {fmt(d.dailyCap)} WIF per wallet per day and only while funds remain.</li>
           <li><b>PvP:</b> the winner takes 90% of the stake; 10% is sent to the dead address.</li>
           <li><b>🎃 Pumpkin King:</b> drops his Crown costume and the Pumpkin Launcher.</li>
-          <li><b>Free:</b> your first @name, and a small WIF welcome gift once per wallet while the pool lasts.</li>
         </ul>
         <p className="fine dim">No seasons, airdrops or token prizes beyond these. This is real $wif on Robinhood Chain mainnet.</p>
       </div>
