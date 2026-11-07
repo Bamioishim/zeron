@@ -488,7 +488,7 @@ export default function App() {
       setHeroes(hs.map((h, i) => ({ ...h, burned: per.get(h.player.toLowerCase()) || 0n, eq: wr[i]?.eq ?? 0, mask: wr[i]?.mask ?? 1 })))
     } catch (e) { console.warn('board', e) }
   }, [day, loadFighters])
-  useEffect(() => {\n    if (tab === 'board') loadBoard()\n    if (tab === 'burn') {\n      loadBurns()\n      const poll = window.setInterval(loadBurns, 15000)\n      return () => window.clearInterval(poll)\n    }\n  }, [tab, loadBoard, loadBurns])
+  useEffect(() => {\n    if (tab === 'board') {\n      loadBoard()\n      const poll = window.setInterval(loadBurns, 15000)\n      return () => window.clearInterval(poll)\n    }\n    if (tab === 'burn') {\n      loadBurns()\n      const poll = window.setInterval(loadBurns, 15000)\n      return () => window.clearInterval(poll)\n    }\n  }, [tab, loadBoard, loadBurns])
 
   async function act(label: string, calls: Call[], ok: string, rethrow = false) {
     if (!deployed) { setToast({ msg: 'Contracts are not deployed yet, so on-chain actions are off. Free play still works.', err: true }); return null }
@@ -545,7 +545,7 @@ export default function App() {
         <div style={{ display: tab === 'world' ? 'block' : 'none' }}>
           <Game nudge={nudge} day={day} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} player={me} setToast={setToast} refresh={refresh} loadFighters={loadFighters} active={tab === 'world'} starter={starter} setTab={setTab} />
         </div>
-        {tab === 'board' && <Board d={d} board={board} me={me} day={day} busy={busy} act={act} reload={loadBoard} heroes={heroes} />}
+        {tab === 'board' && <Board d={d} board={board} me={me} day={day} busy={busy} act={act} reload={loadBoard} heroes={heroes} burns={burns} reloadBurns={loadBurns} />}
         {tab === 'burn' && <BurnPanel tot={burnTot} burns={burns} reload={() => { refresh(); loadBurns() }} d={d} />}
         {tab === 'how' && <How d={d} />}
       </main>
@@ -1099,7 +1099,7 @@ function BurnPanel({ tot, burns, reload }: any) {
   )
 }
 
-function Board({ d, board, me, day, busy, act, reload, heroes }: any) {
+function Board({ d, board, me, day, busy, act, reload, heroes, burns, reloadBurns }: any) {
   return (
     <section className="grid2">
       <div className="card span2">
@@ -1131,6 +1131,17 @@ function Board({ d, board, me, day, busy, act, reload, heroes }: any) {
           <li><b>Free:</b> your first @name, and a small WIF welcome gift once per wallet while the pool lasts.</li>
         </ul>
         <p className="fine dim">No seasons, airdrops or token prizes beyond these. This is real $wif on Robinhood Chain mainnet.</p>
+      </div>
+      <div className="card span2">
+        <div className="mhead"><span className="eyebrow">Live burn transactions <small className="live-label">● mainnet · 15s refresh</small></span><button className="btn sm" onClick={reloadBurns}>Refresh</button></div>
+        <ol className="lb burns">
+          {burns === null && <li className="dim">Reading Robinhood Chain mainnet…</li>}
+          {burns?.length === 0 && <li className="dim">No FeeSink destruction events found in the indexed range.</li>}
+          {burns?.slice(0, 8).map((b: BurnRow) => <li key={b.hash + b.sink + String(b.amount)}>
+            <span>🔥 {fmt(b.amount)} WIF</span><span className="dim">{b.viaBurn ? 'Native burn' : 'Dead-address transfer'} · {b.sink}</span>
+            <span>{b.player ? short(b.player) : 'Player unavailable'}</span><a href={`${EXPLORER}/tx/${b.hash}`} target="_blank" rel="noreferrer">View tx ↗</a>
+          </li>)}
+        </ol>
       </div>
     </section>
   )
