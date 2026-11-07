@@ -134,10 +134,10 @@ function SetPin({ name, onDone, onSkip, title }: { name: string; onDone: () => v
   )
 }
 /** onboarding / rename: pick an @name with a live availability check, then a PIN */
-function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: any) {
+function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge, startLogin }: any) {
   const [name, setName] = useState('')
   const [pin, setP] = useState(''), [pin2, setP2] = useState(''), [question, setQuestion] = useState(RECOVERY_QUESTIONS[0]), [answer, setAnswer] = useState('')
-  const [login, setLogin] = useState(false)
+  const [login, setLogin] = useState(!!startLogin)
   const [done, setDone] = useState<{ name: string; link: string; pinErr?: string } | null>(null)
   const [err, setErr] = useState('')
   const [taken, setTaken] = useState<string[]>([])
@@ -323,7 +323,7 @@ function MenuPanel({ view, onClose, stats, me, d, busy, act, approveIfNeeded, se
 
 /** title screen: slowly panning, torch-lit dungeon behind the logo and a central play panel */
 /** title screen: logo, Halloween banner, one CTA and wallet status */
-function Opening({ onEnter, onMenuView, me }: { onEnter: (t?: Tab) => void; onMenuView: (view: MenuView) => void; me: string }) {
+function Opening({ onEnter, onLogin, onMenuView, me }: { onEnter: (t?: Tab) => void; onLogin: () => void; onMenuView: (view: MenuView) => void; me: string }) {
   const map = useMemo(() => dungeonMap(dayNow() % 97 + 3, roomsFor({ kind: 'level', level: 2 } as any).map((r) => r.key)), [])
   const api = useRef<WorldApi | null>(null)
   useEffect(() => {
@@ -343,6 +343,7 @@ function Opening({ onEnter, onMenuView, me }: { onEnter: (t?: Tab) => void; onMe
         <Svg src={WORDMARK} className="op-word" />
         <div className="op-tag">a daily pixel dungeon powered by $wif</div>
         <button className="btn lime big op-cta" onClick={() => onEnter('world')}>Enter the Depths ▸</button>
+        <button className="linkbtn" onClick={onLogin}>Already have an account? Log in</button>
         <div className="fine op-who">Wallet ready · {short(me)} · 0 ETH needed, gas is on Zeron</div>
       </div>
     </div>
@@ -534,7 +535,7 @@ export default function App() {
     if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { const i = TABS.indexOf(tab) + (dx < 0 ? 1 : -1); if (i >= 0 && i < TABS.length) setTab(TABS[i]) }
   }
 
-  if (!opened) return <><Opening me={me} onMenuView={setMenuView} onEnter={(t) => { audio.unlock(); setTab(t || 'world'); setOpened(true); if (needName || (deployed && m.name === undefined)) setNamePrompt('Pick your @name') }} />{menuView && <MenuPanel view={menuView} onClose={() => setMenuView(null)} stats={stats} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}</>
+  if (!opened) return <><Opening me={me} onMenuView={setMenuView} onLogin={() => { setOpened(true); setNamePrompt('Log in') }} onEnter={(t) => { audio.unlock(); setTab(t || 'world'); setOpened(true); if (needName || (deployed && m.name === undefined)) setNamePrompt('Pick your @name') }} />{menuView && <MenuPanel view={menuView} onClose={() => setMenuView(null)} stats={stats} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}</>
   return (
     <div className="shell" onTouchStart={onTS} onTouchEnd={onTE}>
       <header className="top">
@@ -562,7 +563,7 @@ export default function App() {
         {tab === 'how' && <How d={d} />}
       </main>
       {opened && pinFor && !namePrompt && <div className="modal"><div className="card mbox"><SetPin name={pinFor} title="New: log in anywhere" onDone={() => { setPinFor(''); setToast({ msg: `PIN saved. Log in with @${pinFor} + PIN on any device.` }) }} onSkip={() => { sessionStorage.setItem('zeron.pinskip', pinFor); setPinFor('') }} /></div></div>}
-      {namePrompt && <div className="modal"><div className="card mbox"><NamePick me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} nudge={namePrompt} onDone={() => setNamePrompt('')} onSkip={() => { nudged.current = namePrompt === 'Pick your @name' ? false : true; setNamePrompt('') }} /></div></div>}
+      {namePrompt && <div className="modal"><div className="card mbox"><NamePick me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} nudge={namePrompt} startLogin={namePrompt === 'Log in'} onDone={() => setNamePrompt('')} onSkip={() => { nudged.current = namePrompt === 'Pick your @name' ? false : true; setNamePrompt('') }} /></div></div>}
       {toast && <div className={'toast ' + (toast.err ? 'err' : '')} onClick={() => setToast(null)} role="status">
         <div>{toast.msg}{toast.link && <> · <a href={toast.link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>view tx ↗</a></>}</div>
         {toast.gas && <div className="toast-sub">⛽ Gas: 0.2 WIF (0.1 to dead address + 0.1 to relayer) · FeeSink destroyed: {toast.burned === null || toast.burned === undefined ? '…' : fmt(toast.burned)}</div>}
