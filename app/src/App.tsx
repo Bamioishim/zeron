@@ -1,5 +1,6 @@
 import { getAddress } from 'viem'
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { encodeFunctionData, formatEther, parseEther, maxUint256, parseEventLogs, keccak256, encodeAbiParameters, type Hex } from 'viem'
 import { D, deployed, wifAbi, gameAbi, namesAbi, questAbi, questXAbi, shopAbi, armoryAbi, type Call } from './shared/chain'
 import { rtStart, rtTick, rtDrink, EP_COST, tempo, foeMax, TICK, canFinish, WCD, AMMO_W, type RT, type Ev, type Fx } from './shared/rt'
@@ -225,14 +226,9 @@ export const _CREDITS = <>art: CC0 "DungeonTileset II" by 0x72 + original sprite
 
 type MenuView = 'stats' | 'profile'
 function MenuButton({ onSelect }: { onSelect: (view: MenuView) => void }) {
-  const [open, setOpen] = useState(false)
-  return <div className="menu-wrap">
-    <button className="menu-profile-btn" onClick={() => { setOpen(false); onSelect('profile') }}>Profile</button>
-    <button className="menu-icon" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen(v => !v)}>☰</button>
-    {open && <div className="menu-dropdown">
-      <button onClick={() => { setOpen(false); onSelect('stats') }}>Stats</button>
-      <button onClick={() => { setOpen(false); onSelect('profile') }}>Profile</button>
-    </div>}
+  return <div className="menu-wrap" aria-label="Account menu">
+    <button className="menu-profile-btn" onClick={() => onSelect('profile')}>Profile</button>
+    <button className="menu-stats-btn" onClick={() => onSelect('stats')}>Stats</button>
   </div>
 }
 function StatsPanel({ stats }: { stats: { burned?: bigint | null; players?: number | null; clears?: number | null } }) {
@@ -313,12 +309,15 @@ function ProfilePanel({ me, d, busy, act, approveIfNeeded, setToast }: any) {
   </div>
 }
 function MenuPanel({ view, onClose, stats, me, d, busy, act, approveIfNeeded, setToast }: any) {
-  return <div className="modal menu-overlay" onClick={onClose}>
-    <div className="card menu-panel" onClick={e => e.stopPropagation()}>
-      <div className="mhead"><span className="eyebrow">{view === 'stats' ? 'Stats' : 'Profile'}</span><button className="btn sm" onClick={onClose}>✕</button></div>
-      {view === 'stats' ? <StatsPanel stats={stats} /> : <ProfilePanel me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}
-    </div>
-  </div>
+  return createPortal(
+    <div className="modal menu-overlay" onClick={onClose}>
+      <div className="card menu-panel" role="dialog" aria-modal="true" aria-label={view === 'stats' ? 'Zeron stats' : 'Zeron profile'} onClick={e => e.stopPropagation()}>
+        <div className="mhead"><span className="eyebrow">{view === 'stats' ? 'Stats' : 'Profile'}</span><button className="btn sm" onClick={onClose}>✕</button></div>
+        {view === 'stats' ? <StatsPanel stats={stats} /> : <ProfilePanel me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}
+      </div>
+    </div>,
+    document.body
+  )
 }
 
 /** title screen: slowly panning, torch-lit dungeon behind the logo and a central play panel */
@@ -489,7 +488,7 @@ export default function App() {
       setHeroes(hs.map((h, i) => ({ ...h, burned: per.get(h.player.toLowerCase()) || 0n, eq: wr[i]?.eq ?? 0, mask: wr[i]?.mask ?? 1 })))
     } catch (e) { console.warn('board', e) }
   }, [day, loadFighters])
-  useEffect(() => { if (tab === 'board') loadBoard(); if (tab === 'burn') loadBurns() }, [tab, loadBoard, loadBurns])
+  useEffect(() => {\n    if (tab === 'board') loadBoard()\n    if (tab === 'burn') {\n      loadBurns()\n      const poll = window.setInterval(loadBurns, 15000)\n      return () => window.clearInterval(poll)\n    }\n  }, [tab, loadBoard, loadBurns])
 
   async function act(label: string, calls: Call[], ok: string, rethrow = false) {
     if (!deployed) { setToast({ msg: 'Contracts are not deployed yet, so on-chain actions are off. Free play still works.', err: true }); return null }
@@ -1083,12 +1082,18 @@ function BurnPanel({ tot, burns, reload }: any) {
         <p className="fine">Players do not need ETH. A standard sponsored batch costs 0.2 WIF: 0.1 goes to the dead address and 0.1 repays the relayer. The first starter grant and first @name claim are free onboarding exceptions. FeeSink totals above count contract fee destruction only; they do not include the separate gas-fee transfers.</p>
       </div>
       <div className="card span2">
-        <div className="mhead"><span className="eyebrow">Recent FeeSink destruction</span><button className="btn sm" onClick={reload}>Refresh</button></div>
+        <div className="mhead"><span className="eyebrow">Live mainnet burn transactions <small className="live-label">● auto-refresh · 15s</small></span><button className="btn sm" onClick={reload}>Refresh</button></div>
         <ol className="lb burns">
-          {burns === null && <li className="dim">Loading…</li>}
-          {burns?.length === 0 && <li className="dim">No FeeSink destruction events found.</li>}
-          {burns?.slice(0, 30).map((b: BurnRow) => <li key={b.hash + b.sink + String(b.amount)}><span>🔥 {fmt(b.amount)}</span><span className="dim">{b.sink}</span><span>{b.player ? short(b.player) : ''}</span><a href={`${EXPLORER}/tx/${b.hash}`} target="_blank" rel="noreferrer">tx ↗</a></li>)}
+          {burns === null && <li className="dim">Reading Robinhood Chain mainnet…</li>}
+          {burns?.length === 0 && <li className="dim">No FeeSink destruction events found in the indexed range.</li>}
+          {burns?.slice(0, 30).map((b: BurnRow) => <li key={b.hash + b.sink + String(b.amount)}>
+            <span>🔥 {fmt(b.amount)} WIF</span>
+            <span className="dim">{b.viaBurn ? 'Native token burn' : 'Sent to dead address'} · {b.sink}</span>
+            <span>{b.player ? short(b.player) : 'Player unavailable'}</span>
+            <a href={`${EXPLORER}/tx/${b.hash}`} target="_blank" rel="noreferrer">View tx ↗</a>
+          </li>)}
         </ol>
+        <p className="fine dim">Each row is an on-chain FeeSink Destroyed event. “Native token burn” means total WIF supply was reduced; “Sent to dead address” means tokens were transferred to 0x…dEaD. Open the transaction to verify it on Blockscout.</p>
       </div>
     </section>
   )
