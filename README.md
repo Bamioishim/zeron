@@ -6,7 +6,7 @@ Zeron is a daily pixel dungeon game powered by **$WIF on Robinhood Chain**.
 
 ## The daily loop
 
-1. Enter the daily ranked challenge and fight through **15 enemies**, ending with the Daily Warden.
+1. Enter the daily ranked challenge and fight through **14 unique enemy types plus the Daily Warden** (15 fights total).
 2. Earn up to **30 WIF** for a full clear. The run is limited to one recorded attempt per player each day.
 3. Spend WIF on useful items and gear to prepare for future runs.
 4. Ranked entry fees and daily-item fees contribute to the on-chain prize pool. The highest ranked score takes the pool when the day is settled.
