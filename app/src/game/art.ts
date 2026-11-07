@@ -12,7 +12,7 @@ export const LOOK: Record<string, { a: string; scale?: number }> = {
   tortoise: { a: 'big_zombie_idle_anim' }, jester: { a: 'chort_idle_anim', scale: 1.5 }, rim: { a: 'big_demon_idle_anim' },
   // level families (CC0 0x72 DungeonTileset II); bosses are ~2x versions of their family
   slime2: { a: 'swampy_anim' }, slug: { a: 'slug_anim' }, kslime: { a: 'swampy_anim', scale: 2 },
-  goblin: { a: 'goblin_idle_anim' }, goblin2: { a: 'wogol_idle_anim' }, wogol: { a: 'wogol_idle_anim' }, gchief: { a: 'goblin_idle_anim', scale: 2 },
+  goblin: { a: 'goblin_idle_anim' }, goblin2: { a: 'lizard_m_idle_anim' }, wogol: { a: 'wogol_idle_anim' }, gchief: { a: 'goblin_idle_anim', scale: 2 },
   skull2: { a: 'necromancer_anim' }, slord: { a: 'skelet_idle_anim', scale: 2 },
   orc: { a: 'orc_warrior_idle_anim' }, orc2: { a: 'masked_orc_idle_anim' }, orc3: { a: 'orc_shaman_idle_anim' }, owar: { a: 'masked_orc_idle_anim', scale: 2 },
   imp: { a: 'imp_idle_anim' }, chort: { a: 'chort_idle_anim' }, demon: { a: 'big_demon_idle_anim', scale: 1.3 },
