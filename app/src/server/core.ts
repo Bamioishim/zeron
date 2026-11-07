@@ -127,15 +127,12 @@ function checkCall(c: Call) {
 
 const DEAD = getAddress('0x000000000000000000000000000000000000dEaD')
 import { gasFeeCalls } from '../shared/chain'
-/** fee-free onboarding batch: only the welcome gift and/or the player's FIRST @name (V2 registry: first name costs nothing) */
+/** fee-free onboarding batch: only the player's FIRST @name (V2 registry: first name costs nothing) */
 export function isOnboarding(calls: Call[]) {
-  if (!calls.length || calls.length > 2) return false
-  return calls.every((c) => {
-    const to = getAddress(c.to)
-    if ((D as any).shop && to === getAddress((D as any).shop)) return decodeFunctionData({ abi: shopAbi, data: c.data }).functionName === 'starter'
-    if (to === getAddress(D.names as Hex)) return decodeFunctionData({ abi: namesAbi, data: c.data }).functionName === 'claim'
-    return false
-  })
+  if (calls.length !== 1) return false
+  const call = calls[0]
+  if (getAddress(call.to) !== getAddress(D.names as Hex)) return false
+  return decodeFunctionData({ abi: namesAbi, data: call.data }).functionName === 'claim'
 }
 async function checkGasFee(calls: Call[], from: Hex) {
   const need = gasFeeCalls(); if (!need.length) return
