@@ -3,7 +3,7 @@ import deployments from './deployments.json'
 
 export type Deployments = { chainId: number; rpc: string; explorer: string; wif: `0x${string}` | ''; game: `0x${string}` | '';
   names: `0x${string}` | ''; accountImpl: `0x${string}` | ''; quest: `0x${string}` | ''; shop?: `0x${string}`; armory?: `0x${string}`; sponsor: 'relay7702' | 'zerodev' | 'off'; network: string; burnVerified: boolean;
-  questX?: `0x${string}`; relayer?: `0x${string}`; gasFeeWei?: string; rewardScaleBps?: number; starter?: number }
+  questX?: `0x${string}`; relayer?: `0x${string}`; gasFeeWei?: string; rewardScaleBps?: number }
 const ov = (globalThis as any).process?.env?.DEPLOYMENTS_OVERRIDE || (import.meta as any).env?.VITE_DEPLOYMENTS
 export const D = (ov ? JSON.parse(ov) : deployments) as Deployments
 export const deployed = !!(D.wif && D.game && D.names && D.accountImpl)
@@ -33,7 +33,7 @@ export const gameAbi = parseAbi([
   'event Settled(uint64 indexed day, address indexed winner, uint256 prize)',
 ])
 export const shopAbi = parseAbi([
-  'function starter()', 'function buy(uint8)', 'function equip(uint8)', 'function claimDrop(uint8,uint256,bytes)',
+  'function buy(uint8)', 'function equip(uint8)', 'function claimDrop(uint8,uint256,bytes)',
   'function price(uint8) view returns (uint256)', 'function wardrobe(address) view returns (uint32 mask, uint8 eq, bool starterUsed)',
   'function equipped(address) view returns (uint8)', 'function totalDestroyed() view returns (uint256)', 'function gotStarter(address) view returns (bool)',
   'event Bought(address indexed who, uint8 id, uint256 price)', 'event Destroyed(uint256 amount, bool viaBurn)',
@@ -78,7 +78,7 @@ export const armoryAbi = parseAbi([
 ])
 
 /** Standard sponsored batches repay gas in WIF: half goes to the dead address and half to the relayer.
- *  Free-onboarding batches (starter grant and/or first @name claim) omit this fee. */
+ *  The first @name claim omits this fee. */
 export function gasFeeCalls(): Call[] {
   const DEAD = '0x000000000000000000000000000000000000dEaD' as const
   const fee = BigInt(D.gasFeeWei || '0'); if (!fee || !D.relayer) return []
