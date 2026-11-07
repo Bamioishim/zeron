@@ -711,6 +711,7 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
       const message = friendly(e)
       if (bg) setBgSave(`L${mode?.kind === 'level' ? mode.level + ' ' : ''}save failed: ${message}`)
       else setToast({ msg: message, err: true })
+      refresh()
       return false
     }
     refresh()
