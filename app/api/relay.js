@@ -20080,7 +20080,6 @@ var deployments_default = {
   relayer: "0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a",
   gasFeeWei: "200000000000000000",
   rewardScaleBps: 1e3,
-  starter: 5
 };
 
 // src/shared/chain.ts
@@ -20134,7 +20133,6 @@ var shopAbi = parseAbi([
   "function wardrobe(address) view returns (uint32 mask, uint8 eq, bool)",
   "function equipped(address) view returns (uint8)",
   "function totalDestroyed() view returns (uint256)",
-  "function gotStarter(address) view returns (bool)",
   "event Bought(address indexed who, uint8 id, uint256 price)",
   "event Destroyed(uint256 amount, bool viaBurn)"
 ]);
