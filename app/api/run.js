@@ -18918,8 +18918,9 @@ var ONCHAIN_MAX_LEVEL = 6;
 function levelDungeon(L) {
   if (L < 1 || L > MAX_LEVEL) throw new Error("bad level");
   const lv = LEVELS[L - 1];
-  const rooms = lv.minions.map(([key, name], i) => ({ key, name, hp: 10 + 6 * L + 2 * i, atk: 2 + L + (i === 2 ? 1 : 0), def: Math.floor((L - 1) / 2), gold: 6 + 3 * L + i }));
-  rooms.push({ ...lv.boss });
+  const rooms = lv.minions.map(([key, name], i) => ({ key, name, hp: 10 + 6 * L + 2 * i, atk: 2 + L + (i === 2 ? 1 : 0), def: Math.floor((L - 1) / 2) + (i === 2 && L >= 5 ? 1 : 0), gold: 6 + 3 * L + i }));
+  const bossScale = Math.max(0, L - 8);
+  rooms.push({ ...lv.boss, hp: lv.boss.hp + bossScale * 4, atk: lv.boss.atk + bossScale, def: lv.boss.def + Math.floor(bossScale / 2), gold: lv.boss.gold + bossScale * 5 });
   return rooms;
 }
 function lootFor(L) {
@@ -18940,13 +18941,26 @@ var seedOf = (m) => m.kind === "daily" ? m.day : m.kind === "event" ? 9e6 + (m.s
 function dungeonFor(day) {
   const r = mulberry(day * 7919 + 17);
   const rooms = [];
-  for (let i = 0; i < ROOMS - 1; i++) {
-    const pool = BESTIARY.slice(0, Math.min(BESTIARY.length, 2 + i));
-    const e = pool[Math.floor(r() * pool.length)];
-    const bump = Math.floor(r() * 3);
-    rooms.push({ ...e, hp: e.hp + bump * 2 + i * 2, atk: e.atk + (i >= 3 ? 1 : 0) });
+  const unique = new Map();
+  for (const level of LEVELS) for (const [key, name] of level.minions) if (!unique.has(key)) unique.set(key, { key, name });
+  const pool = [...unique.values()];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  rooms.push({ ...BOSS, hp: BOSS.hp + Math.floor(r() * 6) });
+  for (let i = 0; i < ROOMS - 1; i++) {
+    const base = pool[i];
+    const tier = i + 1;
+    const bump = Math.floor(r() * 3);
+    rooms.push({
+      ...base,
+      hp: 12 + Math.floor(r() * 10) + tier * 3 + bump * 2,
+      atk: 3 + Math.floor(r() * 3) + Math.floor(tier / 4),
+      def: Math.floor(tier / 6),
+      gold: 8 + tier * 2
+    });
+  }
+  rooms.push({ ...BOSS, hp: BOSS.hp + 28 + Math.floor(r() * 12), atk: BOSS.atk + 3, def: BOSS.def + 2, name: "The Daily Warden" });
   return rooms;
 }
 function start(mode, loadout, gear = NOGEAR) {
