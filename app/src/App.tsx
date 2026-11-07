@@ -203,7 +203,7 @@ const EXPLORER = D.explorer.replace(/\/$/, '')
 type Modal = Npc['kind'] | null
 
 interface Quest { level: number; sword: number; armor: number; charm: number; iron: number; hide: number; glow: number; registered: boolean; rating: number; wins: number; losses: number }
-interface Me { wif?: bigint; eth?: bigint; name?: string; xp?: bigint; streak?: number; entered?: boolean; playedToday?: boolean; items: Record<number, number>; allowG?: bigint; allowN?: bigint; allowQ?: bigint; allowS?: bigint; allowA?: bigint; best?: number; q: Quest; wardrobe?: { mask: number; eq: number; starterUsed: boolean }; arms?: { mask: number; eq: number; ammo: number; earnedToday: bigint } }
+interface Me { wif?: bigint; eth?: bigint; name?: string; xp?: bigint; streak?: number; entered?: boolean; playedToday?: boolean; items: Record<number, number>; allowG?: bigint; allowN?: bigint; allowQ?: bigint; allowS?: bigint; allowA?: bigint; best?: number; q: Quest; wardrobe?: { mask: number; eq: number }; arms?: { mask: number; eq: number; ammo: number; earnedToday: bigint } }
 interface Day { pool?: bigint; leader?: string; top?: number; fee?: bigint; prices: Record<number, bigint>; destroyed?: bigint; burnBps?: number; useBurn?: boolean; nameFee?: bigint; chainDay?: number; craftFee?: bigint; pvpStake?: bigint; dailyCap?: bigint; burnedAll?: bigint }
 const Q0: Quest = { level: 0, sword: 0, armor: 0, charm: 0, iron: 0, hide: 0, glow: 0, registered: false, rating: 0, wins: 0, losses: 0 }
 
@@ -863,7 +863,7 @@ type Num = { id: number; x: number; y: number; v?: number; txt?: string; cls: st
         </Panel>
       )}
       {modal === 'gate' && <RunStart me={me} d={d} day={day} busy={busy} act={act} approveIfNeeded={approveIfNeeded} loadout={loadout} setLoadout={setLoadout} begin={begin} close={() => setModal(null)} />}
-      {modal === 'market' && <Panel title="Shop" onClose={() => setModal(null)}><ShopPanel me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} starter={starter} initTab={shopTab} /></Panel>}
+      {modal === 'market' && <Panel title="Shop" onClose={() => setModal(null)}><ShopPanel me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} initTab={shopTab} /></Panel>}
       {modal === 'names' && <Panel title="@Names & Send" onClose={() => setModal(null)}><Send me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} /></Panel>}
       {modal === 'board' && <Panel title="Today's pool" onClose={() => setModal(null)}><div className="pool"><Sprite name="coin" size={18} /> {fmt(d.pool)} WIF in today's prize pool · top score {d.top || '–'}</div><p className="fine">Open the Leaderboard tab for the full boards.</p></Panel>}
       {modal === 'forge' && <Panel title="Forge" onClose={() => setModal(null)}><Forge me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} /></Panel>}
@@ -1077,6 +1077,7 @@ function BurnPanel({ tot, burns, reload }: any) {
         <div className="parts">{tot?.parts.map((p: any) => <a key={p.addr} href={`${EXPLORER}/address/${p.addr}`} target="_blank" rel="noreferrer" className="chip">{p.label}: {fmt(p.v)}</a>)}</div>
       </div>
       <div className="card span2">
+        <p className="fine">Players do not need ETH. A standard sponsored batch costs 0.2 WIF: 0.1 goes to the dead address and 0.1 repays the relayer. The first @name claim is a free onboarding exception. FeeSink totals count contract fee destruction only, not separate gas-fee transfers.</p>
         <div className="mhead"><span className="eyebrow">Live mainnet burn transactions <small className="live-label">● auto-refresh · 15s</small></span><button className="btn sm" onClick={reload}>Refresh</button></div>
         <ol className="lb burns">
           {burns === null && <li className="dim">Reading Robinhood Chain mainnet…</li>}
@@ -1189,6 +1190,7 @@ function How({ d }: any) {
         <li><b>$wif does the work:</b> the ranked entry ({fmt(d.fee)} WIF), the shop (potions, whetstones, wards), @names, and sending to friends by name.</li>
         <li><b>Fees.</b> The deployed FeeSink contracts transfer configured fee shares to the dead address. They do not call the token's native supply-reduction function. Current shares: Game and Quest 20%; Names, Shop and Armory 50%; PvP stake 10%. The remainder goes to the relevant prize pool, contract balance or treasury, depending on the action.</li>
         <li><b>Ranked prize loop.</b> 80% of ranked-entry and daily-item fees enter that day's Game prize pool. After the day ends, anyone can settle it and the top ranked player receives the pool. If nobody qualifies, it rolls into the current day. This is separate from the Armory's prefunded kill/level reward balance.</li>
+        <li><b>Campaign.</b> Twelve levels, each with three enemy types, rising difficulty and a distinct boss with a special move. Clear each boss to record a checkpoint and unlock the next level.</li>
         <li><b>Forge.</b> Turn iron, hide and glow into a Sword (+ATK), Armor (+DEF) or Charm (+HP), up to tier 3. Each craft costs {fmt(d.craftFee)} WIF per tier: 20% is sent to the dead address; the rest is retained or routed by the Quest contract. Gear counts in every run and in PvP.</li>
         <li><b>Arena.</b> Register your fighter after clearing level 1, then challenge players or the six NPCs. Each challenge stakes {fmt(d.pvpStake)} WIF. Win and you get 90% back; lose and the defender (or the prize pool, for NPCs) gets 90%. 10% of the stake is sent to the dead address. Defending is free. Your stake locks first; then our server signs the duel and its signature becomes the seed, so the outcome can't be predicted or rerolled. If a duel is ever stuck for an hour, you can take your stake back.</li>
         <li><b>Score verification.</b> Runs are deterministic. The server replays your exact moves before signing a score, and the contract accepts each signature only once. This is a practical anti-cheat step because the browser cannot simply submit an arbitrary score, but it still trusts the replay service and signer. Planned upgrades: publish replay inputs, enable independent replay checks, add a dispute window, and make reward claims independently verifiable.</li>
