@@ -319,7 +319,7 @@ footer{margin-top:28px;color:var(--dim);font-size:11px;text-align:center}
   .friend-actions{width:100%;justify-content:flex-start}
 }
 
-/* Mobile-first profile access and blue Zeron accent */
+/* Mobile-first profile access */
 .menu-wrap{display:flex;align-items:center;gap:6px}
 .menu-profile-btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(212,252,80,.5);border-radius:8px;background:#0a0c08;color:#d4fc50;padding:8px 11px;font:11px 'Silkscreen',monospace;cursor:pointer;min-height:36px}
 .menu-profile-btn:active{background:#16190f}
@@ -376,4 +376,12 @@ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
   .menu-profile-btn,.menu-stats-btn{padding:8px 9px;font-size:10px}
   .menu-panel{padding:10px}
   .profile-panel .card{padding:12px}
+}
+
+/* Keep account access visible and first in the mobile header. */
+@media(max-width:760px){
+  .top{align-items:flex-start}
+  .wallet{width:100%;justify-content:flex-start;align-items:center;gap:6px}
+  .wallet .menu-wrap{flex:0 0 auto;order:-1}
+  .wallet .menu-profile-btn,.wallet .menu-stats-btn{display:inline-flex!important;min-height:40px}
 }
