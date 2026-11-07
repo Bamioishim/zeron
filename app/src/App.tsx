@@ -29,11 +29,11 @@ export function friendly(e: any): string {
   const MAP: [RegExp, string][] = [
     [/name: unknown/i, 'No player with that @name yet. Check the spelling.'],
     [/name: taken/i, 'That @name is already taken — try another.'],
-    [/no gas wif/i, "You need 0.2 WIF for gas on this move. Claim your welcome gift at the Market first."],
+    [/no gas wif/i, "You need 0.2 WIF for this sponsored move. Earn WIF in the dungeon or receive WIF from another player."],
     [/name: invalid/i, 'Names are 3–15 characters: a–z, 0–9 and _.'],
     [/name: self/i, "That's you. Pick a friend's @name."],
     [/name: already/i, 'You already have an @name.'],
-    [/insufficient|exceeds balance|transferFrom|ERC20/i, "You don't have enough WIF for that. Claim your welcome gift at the Market, earn some in the dungeon, or get $wif sent to your @name."],
+    [/insufficient|exceeds balance|transferFrom|ERC20/i, "You don't have enough WIF for that. Earn some in the dungeon or get $WIF sent to your @name."],
     [/allowance/i, 'WIF approval missing. Try again.'],
     [/daily challenge already played/i, "You've already used today's Daily Challenge. Come back after the daily reset."],
     [/already entered|entered/i, "You've already entered today's ranked run."],
