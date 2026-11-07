@@ -37,15 +37,16 @@ export function friendly(e: any): string {
     [/already entered|entered/i, "You've already entered today's ranked run."],
     [/used|nonce/i, 'That result was already recorded.'],
     [/expired|deadline/i, 'That took too long. Try again.'],
-    [/sig/i, "The server couldn't verify that. Try again."],
+    // Keep configuration errors ahead of the broad signature matcher ("signer" contains "sig").
+    [/RELAYER_KEY not set|relayer key.*not set|relayer.*private key/i, "Sponsored actions are unavailable because the server relayer key is missing. No transaction was sent."],
+    [/RUN_SIGNER_KEY not set/i, "Reward signing is not configured on Zeron's server. No reward transaction was sent."],
     [/level|locked/i, 'Clear the previous level first.'],
     [/material|iron|hide|glow/i, 'Not enough materials for that.'],
     [/tier|max/i, "That's already at max tier."],
     [/registered|fighter/i, 'Register in the arena first (clear level 1).'],
     [/pending|challenge/i, 'You already have a duel in progress. Wait a moment.'],
     [/daily limit|sponsored|quota/i, "You've hit today's free-gas limit. Come back tomorrow."],
-    [/RELAYER_KEY not set|relayer key.*not set|relayer.*private key/i, "Sponsored actions are unavailable because the server relayer key is missing. No transaction was sent."],
-    [/RUN_SIGNER_KEY not set/i, "Reward signing is not configured on Zeron's server. No reward transaction was sent."],
+    [/sig/i, "The server couldn't verify that. Try again."],
     [/BLOB_READ_WRITE_TOKEN|persistent PIN storage/i, "PIN storage is not configured. Your PIN was not saved. Contact the Zeron team."],
     [/fetch|network|timeout/i, "Can't reach the network right now. Try again."],
   ]
@@ -686,9 +687,14 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
       const earnTxt = (c: any) => (c && c.earned ? ` +${c.earned} WIF earned.` : '')
       if (mode.kind === 'level') {
         const s = await postRun({ player, level: mode.level, salt: mode.salt, loadout: LEVEL_KIT, events })
-        if (!s.cleared) { setToast({ msg: 'The server replay did not see a boss clear.', err: true }); return }
+        if (!s.cleared) {
+          const message = 'The server replay did not see a boss clear.'
+          if (bg) setBgSave(`L${mode.level} save failed: ${message}`)
+          else setToast({ msg: message, err: true })
+          return false
+        }
         const r = await act('record', [s.endgame ? tx((D as any).questX, questXAbi, 'recordClear', [s.level, s.loot.iron, s.loot.hide, s.loot.glow, BigInt(s.deadline), s.sig]) : tx((D as any).quest, questAbi, 'recordClear', [s.level, s.loot.iron, s.loot.hide, s.loot.glow, BigInt(s.deadline), s.sig]), ...claimTx(s.claim)],
-          `Level ${s.level} checkpoint saved: +${s.loot.iron} iron, +${s.loot.hide} hide${s.loot.glow ? `, +${s.loot.glow} glow` : ''}.${earnTxt(s.claim)}`)
+          `Level ${s.level} checkpoint saved: +${s.loot.iron} iron, +${s.loot.hide} hide${s.loot.glow ? `, +${s.loot.glow} glow` : ''}.${earnTxt(s.claim)}`, bg)
         if (r && !bg) setRecorded(r.explorer); return !!r
       } else if (mode.kind === 'event') {
         const s = await postRun({ player, event: true, salt: mode.salt, loadout: LEVEL_KIT, events })
@@ -701,7 +707,12 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
         if (r) { setRecorded(r.explorer); setLoadout([]) }
         return !!r
       }
-    } catch (e: any) { setToast({ msg: friendly(e), err: true }) }
+    } catch (e: any) {
+      const message = friendly(e)
+      if (bg) setBgSave(`L${mode?.kind === 'level' ? mode.level + ' ' : ''}save failed: ${message}`)
+      else setToast({ msg: message, err: true })
+      return false
+    }
     refresh()
   }
 
