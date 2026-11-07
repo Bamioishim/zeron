@@ -198,7 +198,7 @@ export async function relay(body: { from: string; calls: { to: string; value: st
   const fee = BigInt(D.gasFeeWei || '0')
   if (fee && !isOnboarding(calls)) {
     const bal = await p.readContract({ address: D.wif as Hex, abi: wifAbi, functionName: 'balanceOf', args: [from] }) as bigint
-    if (bal < fee) throw new Error(`no gas wif: every move costs ${Number(fee) / 1e18} WIF in gas and you have ${Number(bal * 1000n / 10n ** 18n) / 1000}. Claim your welcome gift first.`)
+    if (bal < fee) throw new Error(`no gas wif: every move costs ${Number(fee) / 1e18} WIF in gas and you have ${Number(bal * 1000n / 10n ** 18n) / 1000}. Earn WIF in the dungeon or receive WIF from another player.`)
   }
   let gas: bigint
   try { gas = await p.estimateGas({ account: relayer, to: from, data, authorizationList } as any) }
