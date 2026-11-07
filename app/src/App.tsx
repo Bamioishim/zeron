@@ -154,7 +154,7 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge, st
     if (!ok) return
     const n = name, p = pin
     let r: any = null
-    try { r = await act('claim', ...(fee > 0n ? approveIfNeeded('N', fee) : []), tx(D.names, namesAbi, 'claim', [n])], me.name ? `You're now @${n} (was @${me.name}).` : `Welcome, @${n}! That's your name everywhere in Zeron.`, true) }
+    try { r = await act('claim', [...(fee > 0n ? approveIfNeeded('N', fee) : []), tx(D.names, namesAbi, 'claim', [n])], me.name ? `You're now @${n} (was @${me.name}).` : `Welcome, @${n}! That's your name everywhere in Zeron.`, true) }
     catch (x: any) {
       const m = friendly(x)
       if (/already taken/i.test(m)) { setTaken((t) => [...t, n]); setErr(`@${n} is already taken — try another`) } else setErr(m)
