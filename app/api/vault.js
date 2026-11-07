@@ -18423,11 +18423,72 @@ async function save(n2, rec) {
   }
   await put(path(n2), body, { access: "private", allowOverwrite: true, addRandomSuffix: false, contentType: "application/json", cacheControlMaxAge: 60 });
 }
-var ownerOf = async (n2) => getAddress(await pub().readContract({ address: D.names, abi: namesAbi, functionName: "resolve", args: [n2] }));
+var namePath = (n2) => `names/${n2}.json`;
+var walletPath = (a) => `wallets/${a.toLowerCase()}.json`;
+async function loadName(n2) {
+  if (useMem()) { const s2 = mem.get(namePath(n2)); return s2 ? JSON.parse(s2) : null; }
+  const r2 = await get(namePath(n2), { access: "private", useCache: false }).catch(() => null);
+  if (!r2 || r2.statusCode !== 200) return null;
+  return JSON.parse(await new Response(r2.stream).text());
+}
+async function saveName(n2, rec) {
+  const body = JSON.stringify(rec);
+  if (useMem()) { mem.set(namePath(n2), body); return; }
+  await put(namePath(n2), body, { access: "private", allowOverwrite: false, addRandomSuffix: false, contentType: "application/json" });
+}
+async function loadWalletName(addr) {
+  if (useMem()) { const s2 = mem.get(walletPath(addr)); return s2 ? JSON.parse(s2) : null; }
+  const r2 = await get(walletPath(addr), { access: "private", useCache: false }).catch(() => null);
+  if (!r2 || r2.statusCode !== 200) return null;
+  return JSON.parse(await new Response(r2.stream).text());
+}
+async function saveWalletName(addr, name) {
+  const body = JSON.stringify({ name, updated: Date.now() });
+  if (useMem()) { mem.set(walletPath(addr), body); return; }
+  await put(walletPath(addr), body, { access: "private", allowOverwrite: true, addRandomSuffix: false, contentType: "application/json", cacheControlMaxAge: 60 });
+}
+var ZERO = "0x0000000000000000000000000000000000000000";
+var legacyOwner = async (n2) => await pub().readContract({ address: D.names, abi: namesAbi, functionName: "resolve", args: [n2] }).catch(() => ZERO);
+var ownerOf = async (n2) => { const r2 = await loadName(n2); return r2 ? getAddress(r2.addr) : getAddress(await legacyOwner(n2)); };
 var mins = (ms) => Math.max(1, Math.ceil(ms / 6e4));
 async function vault(body) {
   const op = String(body?.op || ""), name = String(body?.name || "").toLowerCase();
+  if (op === "walletName") {
+    if (!isAddress(body?.addr)) throw err(400, "Bad wallet address.");
+    const addr = getAddress(body.addr);
+    const stored = await loadWalletName(addr);
+    if (stored?.name) return { name: stored.name };
+    const legacy = await pub().readContract({ address: D.names, abi: namesAbi, functionName: "nameOf", args: [addr] }).catch(() => "");
+    return { name: String(legacy || "") };
+  }
   if (!nameRe.test(name)) throw err(400, "Names are 3\u201315 characters: a\u2013z, 0\u20139 and _.");
+  if (op === "lookup") {
+    const stored = await loadName(name);
+    const owner = stored?.addr || await legacyOwner(name);
+    return { exists: !!owner && getAddress(owner) !== ZERO, addr: owner || ZERO };
+  }
+  if (op === "claim") {
+    const { addr, sig } = body;
+    const ts = Number(body.ts);
+    if (!isAddress(addr) || !Number.isFinite(ts) || Math.abs(Date.now() - ts) > 10 * 6e4) throw err(400, "Bad name-claim data. Try again.");
+    const a = getAddress(addr);
+    const message = `Zeron: claim username\nname: @${name}\naddress: ${a}\ntime: ${ts}`;
+    const who = await recoverMessageAddress({ message, signature: sig }).catch(() => null);
+    if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify wallet ownership for this name.");
+    const legacy = await legacyOwner(name);
+    if (legacy !== ZERO && getAddress(legacy) !== a) throw err(409, `@${name} is already taken.`);
+    const existing = await loadName(name);
+    if (existing && getAddress(existing.addr) !== a) throw err(409, `@${name} is already taken.`);
+    if (!existing) {
+      try { await saveName(name, { addr: a, created: Date.now() }); }
+      catch {
+        const raced = await loadName(name);
+        if (!raced || getAddress(raced.addr) !== a) throw err(409, `@${name} is already taken.`);
+      }
+    }
+    await saveWalletName(a, name);
+    return { ok: true, name, addr: a };
+  }
   if (op === "salt") {
     const r = await load(name);
     return r ? { exists: true, salt: r.salt, addr: r.addr, question: r.question || null, rsalt: r.rsalt || null, recovery: !!(r.rsalt && r.riv && r.rct) } : { exists: false };
@@ -18440,7 +18501,7 @@ async function vault(body) {
     const a = getAddress(addr);
     const who = await recoverMessageAddress({ message: vaultMessage(name, a, vaultDigest({ salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct }), ts), signature: sig }).catch(() => null);
     if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify this device owns that wallet.");
-    if (await ownerOf(name) !== a) throw err(403, `@${name} isn't yours on-chain, so you can't set its PIN.`);
+    if (await ownerOf(name) !== a) throw err(403, `@${name} isn't registered to this wallet, so you can't set its PIN.`);
     const prev = await load(name);
     if (prev && prev.lockUntil > Date.now()) throw err(423, `@${name} is locked after too many wrong PINs. Try again in ${mins(prev.lockUntil - Date.now())} min.`);
     await save(n, { v: 1, addr: a, salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() });
@@ -18468,7 +18529,7 @@ async function vault(body) {
       const left = MAX_FAILS - r.fails;
       throw err(401, `Wrong PIN. ${left} ${left === 1 ? "try" : "tries"} left before a lock.`, { left });
     }
-    if (await ownerOf(name) !== getAddress(r.addr)) throw err(409, `@${name} has moved to another wallet, so this login is no longer valid.`);
+    if (await ownerOf(name) !== getAddress(r.addr)) throw err(409, `@${name} is no longer registered to this wallet.`);
     if (r.fails || r.locks) {
       r.fails = 0;
       r.locks = 0;
@@ -18503,7 +18564,7 @@ async function vault(body) {
     if (!r || !r.rsalt || !r.rverifier || !r.riv || !r.rct) throw err(404, "Recovery is not set up for this name.");
     if (!isAddress(addr) || getAddress(addr) !== getAddress(r.addr) || !hexRe(32).test(salt) || !hexRe(64).test(verifier) || !hexRe(24).test(iv) || !hexRe().test(ct) || ct.length > 400 || !hexRe(64).test(auth)) throw err(400, "Bad reset data.");
     if (toHex(sha256(Buffer.from(auth.slice(2), "hex"))) !== r.rverifier) throw err(401, "Wrong recovery answer.");
-    if (await ownerOf(name) !== getAddress(r.addr)) throw err(409, `@${name} has moved to another wallet.`);
+    if (await ownerOf(name) !== getAddress(r.addr)) throw err(409, `@${name} is no longer registered to this wallet.`);
     await save(n, { ...r, salt, verifier, iv, ct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() });
     return { ok: true };
   }
