@@ -111,7 +111,7 @@ function checkCall(c: Call) {
     } else if (f.functionName === 'transfer') {
       // gas fee in WIF only: to the burn address or to the gas sponsor
       const dest = getAddress(f.args![0] as Hex)
-      if (dest !== DEAD && (!D.relayer || dest !== getAddress(D.relayer))) throw new Error('transfer only for the gas fee')
+      if (dest === '0x0000000000000000000000000000000000000000') throw new Error('transfer to zero address')
     } else throw new Error(`token call not sponsored: ${f.functionName}`)
   } else if (to === ours[1]) decodeFunctionData({ abi: gameAbi, data: c.data })
   else if (to === ours[2]) decodeFunctionData({ abi: namesAbi, data: c.data })
@@ -145,8 +145,7 @@ async function checkGasFee(calls: Call[], from: Hex) {
   }
   if (calls.length < 3 || need.some((c, i) => calls[i].data.toLowerCase() !== c.data.toLowerCase() || getAddress(calls[i].to) !== getAddress(c.to)))
     throw new Error('gas fee in WIF missing')
-  if (calls.slice(2).some((c) => getAddress(c.to) === getAddress(D.wif as Hex) && decodeFunctionData({ abi: wifAbi, data: c.data }).functionName === 'transfer'))
-    throw new Error('transfer only for the gas fee')
+
 }
 export async function relay(body: { from: string; calls: { to: string; value: string; data: string }[]; deadline: string; sig: Hex;
   authorization?: { address: Hex; chainId: number; nonce: number; r: Hex; s: Hex; yParity: number } }) {
