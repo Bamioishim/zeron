@@ -6,7 +6,7 @@ import { D, deployed, wifAbi, gameAbi, namesAbi, questAbi, questXAbi, shopAbi, a
 import { rtStart, rtTick, rtDrink, EP_COST, tempo, foeMax, TICK, canFinish, WCD, AMMO_W, type RT, type Ev, type Fx } from './shared/rt'
 import { HALLOWEEN, COSTUMES, WEAPONS } from './config'
 import { setCostume } from './game/art'
-import { totalBurned, homeStats, recentBurns, wardrobeOf, shopPrices, burnedIn, arsenalOf, type BurnRow } from './onchain'
+import { totalBurned, homeStats, recentBurns, wardrobeOf, shopPrices, arsenalOf, type BurnRow } from './onchain'
 import { ITEMS, scoreOf, dayNow, roomsFor, LEVELS, MAX_LEVEL, ONCHAIN_MAX_LEVEL, LEVEL_KIT, RECIPES, lootFor, statsFor, type ItemId, type Move, type Mode, type EnemyDef } from './shared/engine'
 import { account, pub, sponsored, postRun, getKey, isFreeOnboarding } from './wallet'
 import { hasPin, setPin, loginPin, resetPin, pinRe, RECOVERY_QUESTIONS, claimName, lookupName, nameForAddress } from './pin'
@@ -505,9 +505,7 @@ export default function App() {
       const freeOnboarding = await isFreeOnboarding(calls)
       const r = await sponsored(calls); audio.sfx('coin')
       const gasCharged = !freeOnboarding && !!D.relayer && BigInt(D.gasFeeWei || '0') > 0n
-      const id = setToast({ msg: ok, link: r.explorer, gas: gasCharged, burned: null })
-      burnedIn(r.hash).then((b) => {
-      }).catch(() => {})
+      setToast({ msg: ok, link: r.explorer, gas: gasCharged, burned: null })
       await refresh(); return r
     }
     catch (e: any) { console.warn(label, e); if (rethrow) throw e; setToast({ msg: friendly(e), err: true }); return null }
@@ -546,7 +544,7 @@ export default function App() {
       </nav>
       <main>
         <div style={{ display: tab === 'world' ? 'block' : 'none' }}>
-          <Game me={m} player={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} refresh={refresh} loadFighters={loadFighters} />
+          <Game me={m} player={me} d={d} day={day} setTab={setTab} nudge={nudge} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} refresh={refresh} loadFighters={loadFighters} />
         </div>
         {tab === 'board' && <Board d={d} board={board} me={me} day={day} busy={busy} act={act} reload={loadBoard} heroes={heroes} burns={burns} reloadBurns={loadBurns} />}
         {tab === 'burn' && <BurnPanel tot={burnTot} burns={burns} reload={() => { refresh(); loadBurns() }} d={d} />}
@@ -567,7 +565,7 @@ export default function App() {
 /* ------------------------------ the walkable game: fights happen right on the map ------------------------------ */
 const FXTEXT: Partial<Record<Fx, string>> = { feint: 'FEINT', heal: 'HEALS', shell: 'HARDENS', stun: 'STUNNED', canfinish: 'FINISH!' }
 type Num = { id: number; x: number; y: number; v?: number; txt?: string; cls: string }
-function Game({ me, player, d, busy, act, approveIfNeeded, setToast, refresh, loadFighters }: any) {
+function Game({ me, player, d, day, setTab, nudge, busy, act, approveIfNeeded, setToast, refresh, loadFighters }: any) {
   const active = typeof document === 'undefined' || document.visibilityState === 'visible'
   const [townFull, setTownFull] = useState(true)
   const town = useMemo(() => townMap(), [])
