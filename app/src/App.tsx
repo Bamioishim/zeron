@@ -739,6 +739,21 @@ function Game({ me, player, d, day, setTab, nudge, busy, act, approveIfNeeded, s
   }
   const retry = () => { if (!mode || (mode.kind === 'daily' && ranked)) return
     begin(mode.kind === 'daily' ? mode : { ...mode, salt: Math.floor(Math.random() * 1000) } as Mode, mode.kind === 'daily' ? ranked : false, mode.kind === 'daily' ? loadout : LEVEL_KIT) }
+  /** Save a cleared campaign level before returning to town. */
+  const backToTown = async () => {
+    if (savingCheckpoint) return
+    if (mode?.kind === 'level' && run?.cleared && !recorded) {
+      setSavingCheckpoint(true)
+      setBgSave(`Saving L${mode.level} checkpoint…`)
+      try {
+        const saved = await record(true, evs.current)
+        if (!saved) return
+      } finally {
+        setSavingCheckpoint(false)
+      }
+    }
+    leave()
+  }
   const [shopTab, setShopTab] = useState<string>('weapons')
   const onInteract = (n: Npc) => { setShopTab(n.stall === 'potions' ? 'items' : n.stall === 'tailor' ? 'wardrobe' : 'weapons'); if (n.kind === 'talk') { setToast({ msg: n.line || 'Hello!' }); return } if (n.kind === 'arena' && nudge('Claim an @name before you fight')) return; setModal(n.kind) }
   const onTouchFoe = (idx: number) => { if (run && !run.done && idx === run.room && !fight) { engaged.current = idx; setFight(true); audio.sfx('hit') } }
@@ -868,7 +883,7 @@ function Game({ me, player, d, day, setTab, nudge, busy, act, approveIfNeeded, s
               : recorded && <a className="btn" href={recorded} target="_blank" rel="noreferrer">View tx ↗</a>)}
             {mode.kind === 'level' && run.cleared && mode.level < MAX_LEVEL && (!recorded ? <button className="btn" disabled={!!busy} onClick={() => record()}>{busy === 'record' ? 'Saving…' : 'Save only'}</button> : <a className="btn" href={recorded} target="_blank" rel="noreferrer">View tx ↗</a>)}
             {mode.kind === 'daily' && !ranked && <button className="btn" onClick={retry}>↻ Retry</button>}
-            <button className="btn" onClick={() => { if (mode.kind === 'level' && run.cleared && !recorded) { const ev = evs.current; setBgSave(`Saving L${mode.level} checkpoint…`); saveQ.current = saveQ.current.then(() => record(true, ev)).then((ok) => { setBgSave(ok ? 'Checkpoint saved ✓' : 'Checkpoint save failed'); setTimeout(() => setBgSave(''), 5000) }) } leave() }}>Back to town</button>
+            <button className="btn" onClick={backToTown} disabled={savingCheckpoint || !!busy}>{savingCheckpoint ? 'Saving checkpoint…' : 'Back to town'}</button>
           </div>
           {mode.kind === 'daily' && !ranked && <p className="fine">Free run: counts for XP, your streak and WIF earnings, not the leaderboard.</p>}
         </Panel>
