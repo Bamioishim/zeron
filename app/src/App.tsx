@@ -717,17 +717,25 @@ function Game({ me, player, d, day, setTab, nudge, busy, act, approveIfNeeded, s
     refresh()
   }
 
-  const saveQ = useRef<Promise<unknown>>(Promise.resolve())
   const [bgSave, setBgSave] = useState('')
-  /** level cleared -> queue the checkpoint save (non-blocking) and go straight into the next level */
-  const nextLevel = () => {
-    if (!mode || mode.kind !== 'level') return
+  const [savingCheckpoint, setSavingCheckpoint] = useState(false)
+  /** Never leave a cleared level until its checkpoint transaction is confirmed. */
+  const nextLevel = async () => {
+    if (!mode || mode.kind !== 'level' || savingCheckpoint) return
     const lv = mode.level, events = evs.current
-    if (!recorded) {
-      setBgSave(`Saving L${lv} checkpoint…`)
-      saveQ.current = saveQ.current.then(() => record(true, events)).then((ok) => { setBgSave(ok ? `L${lv} checkpoint saved ✓` : `L${lv} save failed: replay it from the Gate`); setTimeout(() => setBgSave(''), 5000) })
+    setSavingCheckpoint(true)
+    setBgSave(`Saving L${lv} checkpoint…`)
+    try {
+      const saved = recorded ? true : await record(true, events)
+      if (!saved) {
+        setBgSave(`L${lv} checkpoint failed. Your next level is locked until this save succeeds.`)
+        return
+      }
+      setBgSave(`L${lv} checkpoint saved ✓`)
+      begin({ kind: 'level', level: lv + 1, salt: Math.floor(Math.random() * 1000) }, false, LEVEL_KIT)
+    } finally {
+      setSavingCheckpoint(false)
     }
-    begin({ kind: 'level', level: lv + 1, salt: Math.floor(Math.random() * 1000) }, false, LEVEL_KIT)
   }
   const retry = () => { if (!mode || (mode.kind === 'daily' && ranked)) return
     begin(mode.kind === 'daily' ? mode : { ...mode, salt: Math.floor(Math.random() * 1000) } as Mode, mode.kind === 'daily' ? ranked : false, mode.kind === 'daily' ? loadout : LEVEL_KIT) }
@@ -854,7 +862,7 @@ function Game({ me, player, d, day, setTab, nudge, busy, act, approveIfNeeded, s
           {run.earned > 0 && <div className="earn">+{rewardAmount(run.earned)} WIF earned this run <span className="fine dim">(paid from the funded Armory pool when you save · {fmt(d.dailyCap)} WIF daily cap per wallet)</span></div>}
           {bgSave && <p className="fine limet">{bgSave}</p>}
           <div className="row">
-            {mode.kind === 'level' && run.cleared && mode.level < MAX_LEVEL && <button className="btn lime" onClick={nextLevel}>Next level ▶ <span className="fine">(saves L{mode.level})</span></button>}
+            {mode.kind === 'level' && run.cleared && mode.level < MAX_LEVEL && <button className="btn lime" onClick={nextLevel} disabled={savingCheckpoint || !!busy}>{savingCheckpoint ? "Saving checkpoint…" : "Next level ▶"} <span className="fine">(saves L{mode.level} first)</span></button>}
             {(mode.kind !== 'level' || mode.level >= MAX_LEVEL) && (mode.kind === 'daily' || run.cleared) && (!recorded
               ? <button className="btn lime" disabled={!!busy} onClick={() => record()}>{busy === 'record' ? 'Saving…' : mode.kind === 'level' ? 'Save checkpoint + claim WIF (free)' : mode.kind === 'event' ? 'Claim the crown + WIF (free)' : 'Record + claim WIF (free)'}</button>
               : recorded && <a className="btn" href={recorded} target="_blank" rel="noreferrer">View tx ↗</a>)}
