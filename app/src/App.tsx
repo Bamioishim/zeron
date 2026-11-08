@@ -1019,6 +1019,7 @@ function RunStart({ me, d, day, dailyAttempted, busy, act, approveIfNeeded, load
   )
 }
 
+function ShopPanel({ me, d, busy, act, approveIfNeeded, initTab }: any) {
   const [tab, setTab] = useState<'weapons' | 'items' | 'wardrobe'>(initTab || 'weapons')
   const arms = me.arms || { mask: 0, eq: 0, ammo: 0 }
   const owns = (i: number) => i === 0 || ((arms.mask >> i) & 1) === 1
