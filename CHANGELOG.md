@@ -8,12 +8,23 @@
 - Friends tab: add by @name (checked against the name registry), a per-wallet list, remove, and send WIF with a confirm step that shows the 0.2 WIF gas fee.
 - README rewritten for judges.
 
+## 2026-11-09 · judge README (docs only)
+
+- README now opens with the pitch, the live link, a 30 s demo GIF (`docs/assets/zeron-demo.gif`, from the new 43 s mainnet demo `docs/assets/zeron-demo.mp4`) and a three-line $WIF loop. It adds a dated **Live economy** snapshot read onchain.
+- Contract addresses, cutover transactions, limitations and maintainer notes moved below the fold, to this file, or to HANDOVER.md.
+- Resolved doc contradictions against the deployed contracts:
+  - Sponsor cap: the onchain cap is `WifAccount.SPONSORED_PER_DAY = 20`. The relayer clamps `SPONSOR_DAILY_CAP` to at most 20, and it defaults to 20.
+  - PvP: `challenge` locks the stake, the server signs the duel, and `seed = keccak256(signature)`.
+  - The Armory remainder is now the reward pool (it no longer goes to the treasury).
+  - Ranked pays the top 3.
+
 This file contains implementation history, testnet context, migration evidence, and older design notes that are intentionally kept out of the submission README.
 
 ## 2026-11-09 — self-funding flywheel mainnet cutover
 
 - Deployed (script `contracts/script/DeployFlywheel.s.sol`): Game `0x87A52585d84A2E649315B302eb713501095674E3`, Quest `0x2DA0821b7830e8E3183aab7D412D5f643F053175`, QuestEndgame `0xeDCD2AF1EF29e9788D6402e2B1E09209f0a98fEd`, Armory `0x1B8093B8be96ccf8Bb2D0f2EDB416e2c8514c303`. Parameters mirror the previous contracts.
-- Migrated 174.3 WIF from the old Armory to the new Armory.
+- Cutover transactions: [Game deploy](https://robinhoodchain.blockscout.com/tx/0x0dd817db74f3cc266b80220b3fe2322fa78176dc31561f057440eeb6f717d773), [Armory deploy](https://robinhoodchain.blockscout.com/tx/0x76fdc9b29066772f0283c65fdbdc7ffa5f5f91e8b442cacbdacb80c86a1bcdb5), [Quest deploy](https://robinhoodchain.blockscout.com/tx/0x1c0bd9b231e53041fea3f65f8f175b65aca609608070dfdb9b8c3861f959d2ba).
+- Migrated 174.3 WIF from the old Armory to the new Armory: [claimed from the old Armory](https://robinhoodchain.blockscout.com/tx/0x81a46c06d4f71f9730c8b15438d1b364b1cc7e10573a599fcdf3d8b1d4242cc5), then [moved into the new one](https://robinhoodchain.blockscout.com/tx/0xf327e2635ff9720bb07f1055082a7ef088d31536ae185cdd518610b5efe8a867).
 - Old Game pools for days 20758 and 20763 settled (no leader, rolled into day 20766); 10 WIF remains in the old Game.
 - Old Quest progress does not carry over.
 
@@ -35,7 +46,7 @@ This file contains implementation history, testnet context, migration evidence, 
 
 ## 2026-11-06 — submission cleanup
 
-- Clarified that Armory rewards are treasury-funded, with 0% of weapon/ammo fees routed to the pool.
+- Clarified that Armory rewards are treasury-funded, with 0% of weapon/ammo fees routed to the pool. *(Superseded by the Nov 9 flywheel cutover: the Armory now keeps the remainder as its reward pool.)*
 - Added the manual Monday review / 30-day target top-up policy and retained the live Blockscout balance link.
 - Removed the Armory runway estimate because a dated Blockscout balance snapshot could not be verified for submission.
 
@@ -43,7 +54,7 @@ This file contains implementation history, testnet context, migration evidence, 
 - Clarified that Armory rewards are funded by manual project-WIF transfers and are not currently self-funded by play.
 - Clarified that weapon fees go to the dead address and treasury, not the Armory reward pool.
 - Standardized the current production URL as `https://zeron-game.vercel.app`.
-- Standardized the documented production sponsor cap as 10 sponsored moves per wallet per day.
+- Standardized the documented production sponsor cap as 10 sponsored moves per wallet per day. *(Superseded: the deployed onchain cap is 20 per wallet per day (`WifAccount.SPONSORED_PER_DAY`), and the relayer's `SPONSOR_DAILY_CAP` can only lower it. See the judge README entry above.)*
 - Removed the older public-seed PvP description from the current README; current PvP is commit/reveal-style state with server-signed resolution.
 - Documented the known potion-loadout balance issue and the proposed per-run budget or diminishing-returns fix.
 
