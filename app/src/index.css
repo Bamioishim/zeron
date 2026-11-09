@@ -75,11 +75,11 @@ footer{margin-top:28px;color:var(--dim);font-size:11px;text-align:center}
 .brand{cursor:pointer}
 .mute{background:#16190f;border:1px solid #2a2f1f;color:var(--dim);font:11px 'Silkscreen',monospace;padding:4px 8px;border-radius:8px;cursor:pointer;margin-left:6px}
 .mute:hover{color:var(--lime);border-color:var(--lime)}
-.opening{position:fixed;inset:0;overflow:hidden;background:#07080a}
+.opening{position:fixed;inset:0;overflow:hidden;background:#0d0d0d}
 .opening-bg{position:absolute;inset:-6%;pointer-events:none;filter:saturate(.9)}
 .opening-bg canvas{width:100%!important;height:100%!important;object-fit:cover}
 .opening-bg .worldwrap,.opening-bg>div{height:100%}
-.opening-veil{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 42%,rgba(7,8,10,.35),rgba(7,8,10,.85) 70%),linear-gradient(transparent 60%,#07080a);pointer-events:none}
+.opening-veil{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 42%,rgba(13,13,13,.35),rgba(13,13,13,.85) 70%),linear-gradient(transparent 60%,#0d0d0d);pointer-events:none}
 .opening-fg{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;text-align:center}
 .opening-mute{position:absolute;top:16px;right:16px}
 .op-icon svg{width:96px;height:96px;display:block;image-rendering:pixelated;filter:drop-shadow(0 0 18px rgba(212,252,80,.25))}
