@@ -279,3 +279,23 @@ Menus / tracker / How segments in the demo were recorded on the live site (chrom
 ### Controls note
 
 Desktop fight keys in the current HUD/handler and updated How-it-works copy: **J** attack · **K** block/parry · **L** weapon special · **Q** potion · **F** finisher · **E** interact · WASD/arrows walk.
+
+
+## Self-funding flywheel (proposed — not yet deployed)
+
+Branch: `feature/self-funding-flywheel`. Requires new Armory + Game contract deploys; do **not** migrate mainnet funds until Bamio explicitly approves.
+
+### 1. Armory purchase remainder → reward pool
+Weapon/ammo fees still destroy `burnBps` (currently 50% → dEaD with `useBurn=false`). The **kept remainder stays in the Armory contract** instead of the treasury, so play refills the reward pool.
+
+Forge fees in `WifQuest` already call `game.addToPool(kept)` — no change needed there.
+
+### 2. On-chain inflow payout cap (default 65%)
+`ZeronArmory.inflowPayoutBps` (default `6500`) caps total rewards paid in the trailing 24 hours at that share of trailing-24h purchase inflows. Tracked with 24 hourly buckets (`inflow24h`, `outflow24h`, `rollingPayoutRoom`). Still also enforces the per-wallet `dailyCap`.
+
+### 3. Ranked top-3 settlement (default 50/30/20)
+`WifDepths.settle` pays `placeBps` (default `5000/3000/2000`) to the top three ranked scores. Empty seats roll their share into today's pool. Configurable via `setPlaceBps` (must sum to 10_000). No new WIF is minted.
+
+### 4. Relayer WIF → ETH
+Uniswap v3 is live on Robinhood Chain (`SwapRouter02` `0xcaf681…5cb2`, factory `0x1f7d75…2efa`). A WIF/WETH 1% pool exists at `0x156064…Ef09` but **liquidity is currently 0**, so automatic conversion cannot work until the pool is seeded. Helper: `app/scripts/relayer-wif-to-eth.mjs` (dry-run by default; exits `NO_LIQUIDITY` when empty). Until then, top up relayer ETH manually.
+

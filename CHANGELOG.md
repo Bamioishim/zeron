@@ -2,6 +2,14 @@
 
 This file contains implementation history, testnet context, migration evidence, and older design notes that are intentionally kept out of the submission README.
 
+## 2026-11-09 — self-funding flywheel (proposed)
+
+- Armory purchase remainder retained in-contract as the reward pool (no treasury skim).
+- On-chain 24h inflow payout cap (`inflowPayoutBps`, default 65%).
+- Ranked settle pays top 3 (`placeBps` default 50/30/20).
+- Relayer WIF→ETH helper via Uniswap v3; blocked today by zero WIF/WETH pool liquidity.
+- Not deployed to mainnet in this change.
+
 ## 2026-11-09 — landing restore production cutover
 
 - Squashed the long `landing-restore` draft PR onto `main` as a single clean change set (backup tag `backup/pr4-tip-3c66fa4`).

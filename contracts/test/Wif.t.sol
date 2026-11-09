@@ -130,7 +130,8 @@ contract WifTest is Test {
         vm.warp(block.timestamp + 1 days);
         uint256 before = wif.balanceOf(bob);
         game.settle(d);
-        assertEq(wif.balanceOf(bob) - before, 160 ether);
+        assertEq(wif.balanceOf(bob) - before, 80 ether); // 50% of 160 pool; empty seats roll rest
+        assertEq(game.pool(game.today()), 80 ether);
         vm.expectRevert(bytes("settled")); game.settle(d);
     }
     function test_settleNoLeaderRolls() public {
