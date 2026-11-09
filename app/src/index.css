@@ -385,3 +385,11 @@ html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
   .wallet .menu-wrap{flex:0 0 auto;order:-1}
   .wallet .menu-profile-btn,.wallet .menu-stats-btn{display:inline-flex!important;min-height:40px}
 }
+/* mini-boss drop: the fallen giant turns into a full-heal potion */
+.potdrop{position:absolute;transform:translate(-50%,-90%);pointer-events:none;z-index:6;display:flex;flex-direction:column;align-items:center;gap:2px;animation:potdrop 1.4s ease-out forwards;filter:drop-shadow(0 0 8px #b46bff)}
+.potdrop b{font:700 11px/1 var(--px,monospace);color:#d4fc50;text-shadow:0 1px 0 #000;letter-spacing:.5px}
+@keyframes potdrop{0%{opacity:0;transform:translate(-50%,-40%) scale(.4)}18%{opacity:1;transform:translate(-50%,-110%) scale(1.25)}35%{transform:translate(-50%,-95%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-160%) scale(.9)}}
+.friends-tab{max-width:640px;margin:0 auto}
+.confirm-send{border:1px solid #d4fc5066;border-radius:10px;padding:10px;margin:8px 0;background:#d4fc500d}
+.confirm-send p{margin:0 0 6px}
+.confirm-send .row{display:flex;gap:8px}

@@ -8,7 +8,7 @@ export const HPX = 1.6, DMGX = 1.5
 export const foeMax = (hp: number) => Math.ceil(hp * HPX)
 export type FoePhase = 'gap' | 'wind' | 'stagger'
 export type AtkKind = 'hit' | 'heavy' | 'heal' | 'shell'
-export type Fx = 'special' | 'boom' | 'burn' | 'stun' | 'finish' | 'bossfinish' | 'canfinish' | 'hit' | 'crit' | 'hurt' | 'blocked' | 'parry' | 'feint' | 'trade' | 'heal' | 'shell' | 'drink' | 'kill' | 'clear' | 'dead' | 'tell' | 'whiff'
+export type Fx = 'special' | 'boom' | 'burn' | 'stun' | 'finish' | 'bossfinish' | 'canfinish' | 'hit' | 'crit' | 'hurt' | 'blocked' | 'parry' | 'feint' | 'trade' | 'heal' | 'shell' | 'drink' | 'kill' | 'clear' | 'dead' | 'tell' | 'whiff' | 'potion'
 export interface RT extends RunState {
   t: number; total: number; phase: FoePhase; pt: number; plen: number; windStart: number; kind: AtkKind; feint: boolean; double: number
   count: number; guardAt: number; atkCd: number; drink: number; bonus: boolean; rs: number; fx: Fx[]
@@ -90,6 +90,7 @@ function playerAttack(s: RT) {
 function kill(s: RT) {
   const rooms = roomsFor(s.mode), e = rooms[s.room]
   const rw = killReward(s); s.earned += rw; s.nums.push({ w: 'foe', v: rw, txt: `+${rw / 10} WIF` }); s.kills++; s.gold += e.gold; s.fx.push('kill'); say(s, `${e.name} falls. +${e.gold} gold.`)
+  if (e.mini && !s.dead) { const h = s.maxHp - s.hp; s.hp = s.maxHp; s.fx.push('potion'); s.nums.push({ w: 'hero', v: h, txt: 'FULL HP' }); say(s, `${e.name} drops a potion: HP fully restored.`) }
   if (s.room === rooms.length - 1) { s.cleared = true; s.done = true; s.earned += clearReward(s.mode); s.fx.push('clear'); say(s, 'Level cleared!') }
   else { s.room++; s.enemyHp = foeMax(rooms[s.room].hp); s.t = 0; s.guardAt = -99; s.atkCd = 0; s.bonus = false; s.proj = 0; s.burnT = 0; resetFoe(s); say(s, `Room ${s.room + 1}: ${rooms[s.room].name}.`) }
 }

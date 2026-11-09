@@ -1,5 +1,13 @@
 # Zeron changelog and historical notes
 
+## 2026-11-09 · potions, sound, friends
+
+- Daily dungeon: fights 5 and 10 are giant mini-bosses (×1.6 HP, +2 ATK, +1 DEF, bigger sprite) that drop a full-heal potion. Deterministic, replay-checked (`npm test`).
+- Rebuilt `api/run.js` from source (`npm run build:api`). The old bundle still had a 5-room daily dungeon, so the server mis-scored 15-room daily runs.
+- Sound: the music files were never shipped (they sat in `deploy-assets/audio`, so every `/audio/*.mp3` returned 404). Audio now runs through one Web Audio context that unlocks on the first tap and re-resumes on iOS. Music plays from `public/audio`, SFX are synthesized, and iOS 17+ plays through the silent switch.
+- Friends tab: add by @name (checked against the name registry), a per-wallet list, remove, and send WIF with a confirm step that shows the 0.2 WIF gas fee.
+- README rewritten for judges.
+
 This file contains implementation history, testnet context, migration evidence, and older design notes that are intentionally kept out of the submission README.
 
 ## 2026-11-09 — self-funding flywheel mainnet cutover
