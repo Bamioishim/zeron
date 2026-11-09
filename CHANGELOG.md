@@ -2,13 +2,20 @@
 
 This file contains implementation history, testnet context, migration evidence, and older design notes that are intentionally kept out of the submission README.
 
-## 2026-11-09 — self-funding flywheel (proposed)
+## 2026-11-09 — self-funding flywheel mainnet cutover
+
+- Deployed (script `contracts/script/DeployFlywheel.s.sol`): Game `0x87A52585d84A2E649315B302eb713501095674E3`, Quest `0x2DA0821b7830e8E3183aab7D412D5f643F053175`, QuestEndgame `0xeDCD2AF1EF29e9788D6402e2B1E09209f0a98fEd`, Armory `0x1B8093B8be96ccf8Bb2D0f2EDB416e2c8514c303`. Parameters mirror the previous contracts.
+- Migrated 174.3 WIF from the old Armory to the new Armory.
+- Old Game pools for days 20758 and 20763 settled (no leader, rolled into day 20766); 10 WIF remains in the old Game.
+- Old Quest progress does not carry over.
+
+## 2026-11-09 — self-funding flywheel (merged)
 
 - Armory purchase remainder retained in-contract as the reward pool (no treasury skim).
 - On-chain 24h inflow payout cap (`inflowPayoutBps`, default 65%).
 - Ranked settle pays top 3 (`placeBps` default 50/30/20).
 - Relayer WIF→ETH helper via Uniswap v3; blocked today by zero WIF/WETH pool liquidity.
-- Not deployed to mainnet in this change.
+- Not deployed to mainnet in this change (see cutover entry above).
 
 ## 2026-11-09 — landing restore production cutover
 
@@ -56,7 +63,7 @@ This file contains implementation history, testnet context, migration evidence, 
 - Weapon purchases route 50% to the dead address and 50% to the treasury; they do not fund the Armory reward pool.
 - The Armory is a finite, pre-funded reward pool. The owner refills it by transferring project WIF to the Armory contract.
 
-## Mainnet contracts
+## Mainnet contracts (original launch; Game, Quest, QuestEndgame and Armory replaced 2026-11-09)
 
 | Contract | Address |
 |---|---|

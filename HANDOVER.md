@@ -83,27 +83,26 @@ All addresses below are on Robinhood Chain, chain ID `4663`.
 | Contract | Address |
 |---|---|
 | WIF token | `0x5173b8eA6923c2d40267890D45C46a3480954773` |
-| Game | `0x7a9b811C490F4F089f63bC6001d801216846Fbd8` |
-| Quest | `0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451` |
-| QuestEndgame | `0xDC9100bDFfC996e509b0e49934aF006785887Fa6` |
+| Game | `0x87A52585d84A2E649315B302eb713501095674E3` |
+| Quest | `0x2DA0821b7830e8E3183aab7D412D5f643F053175` |
+| QuestEndgame | `0xeDCD2AF1EF29e9788D6402e2B1E09209f0a98fEd` |
 | Name registry | `0x4A09d12912dA069687Ce1F568908D18409Eb3B63` |
 | Shop | `0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE` |
-| Armory | `0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7` |
+| Armory | `0x1B8093B8be96ccf8Bb2D0f2EDB416e2c8514c303` |
 | EIP-7702 account implementation | `0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392` |
 | Relayer | `0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a` |
 | Treasury / deployer | `0x2bCEc454514201d867982ecDE9766DC2ed87958E` |
 
 The canonical token and contract addresses also appear in `app/src/shared/deployments.json`. Keep that file, the deploy script, and this table consistent.
 
-### Self-funding flywheel (merged, not deployed)
+### Self-funding flywheel (deployed 2026-11-09)
 
-The flywheel code from PR #6 is merged into `main`. It covers the Armory remainder kept as the reward pool, the 65% trailing-24h inflow payout cap and top-3 ranked settlement. **The mainnet contracts listed above are still the old ones.** Before cutover:
+PR #6 is live on mainnet: new Game (top-3 ranked settle), Quest (forge fees to the new Game pool), QuestEndgame (on the new Quest) and Armory (purchase remainder kept as reward pool, 65% trailing-24h inflow payout cap). Names, Shop and the account implementation are unchanged.
 
-- The owner `0x2bCEc454514201d867982ecDE9766DC2ed87958E` must sign every step. Its key is not in Vercel env.
-- The owner needs about 0.0003 ETH on chain 4663. On Nov 9 2026 it held 0.000076 ETH. The two contract creates estimate at about 4.05M gas, roughly 0.0001 ETH at 0.02 gwei, before config and migration transactions.
-- The old Armory has no rescue or withdraw function. Its 174.3 WIF can leave only through signer-signed `claim()`s, which are capped per wallet per day by `dailyCap`. The old Game's 10 WIF pool leaves only through a ranked winner at `settle`. Choose a migration path deliberately, for example owner `setCap`, then one signed owner claim, then a transfer to the new Armory, or leave the old pools to drain through play.
-- The new Armory pays out only up to 65% of trailing-24h purchase inflows. A migrated seed balance will not pay out until purchases flow.
-- The frontend ABI and `deployments.json`/`DEPLOYMENTS_OVERRIDE` must be updated together with the new addresses.
+- The old Armory's 174.3 WIF was migrated to the new Armory (owner `setCap`, one signed owner `claim`, transfer).
+- The old Game still holds 10 WIF in its day-20766 pool; it can only leave through a ranked winner on the old contract.
+- Quest progress (levels, materials, forged gear, PvP fighters) on the old Quest does not carry over to the new Quest.
+- The new Armory pays out only up to 65% of trailing-24h purchase inflows, so the migrated balance pays nothing until purchases flow.
 
 ## Economy and fee model
 
@@ -114,9 +113,9 @@ The flywheel code from PR #6 is merged into `main`. It covers the Armory remaind
 - Names, Shop, and Armory FeeSinks send 50% to the dead address.
 - PvP stake resolution sends 10% of the stake to the dead address.
 - The deployed FeeSinks use `useBurn=false`. This is dead-address destruction, **not** a native token `burn()` call and not a reduction of WIF total supply.
-- Armory rewards come from a prefunded pool. The on-chain daily cap is 10 WIF per wallet, and the mainnet reward scale is 10%.
-- Weapon/ammo fees do not fund the Armory reward pool (0% fee routing). The team reviews the pool every Monday and manually tops it toward a 30-day target when below that target, based on the trailing-seven-day average payout.
-- Check the live [Armory WIF balance on Blockscout](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7?tab=tokens) before communicating reward availability. Do not publish an undated balance or a runway estimate.
+- Armory rewards come from the Armory's own WIF balance. The on-chain daily cap is 10 WIF per wallet, and the mainnet reward scale is 10%.
+- Weapon/ammo purchases fund the Armory reward pool (the 50% kept after the dead-address share). Total Armory payouts are capped on-chain at 65% of trailing-24h purchase inflows.
+- Check the live [Armory WIF balance on Blockscout](https://robinhoodchain.blockscout.com/address/0x1B8093B8be96ccf8Bb2D0f2EDB416e2c8514c303?tab=tokens) before communicating reward availability. Do not publish an undated balance or a runway estimate.
 - Auto-Hunt is not offered on mainnet: Armory item ID 8 has no configured sale price.
 
 See [docs/TOKENOMICS.md](docs/TOKENOMICS.md) for per-function details and read-only verification commands.

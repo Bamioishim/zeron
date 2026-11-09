@@ -80,12 +80,12 @@ Player browser wallet (local key; optional @name + PIN vault)
 | Piece | Role | Address |
 |---|---|---|
 | WIF token | ERC-20 economy | [`0x5173…4773`](https://robinhoodchain.blockscout.com/address/0x5173b8eA6923c2d40267890D45C46a3480954773) |
-| Game | Ranked entry, daily items, run record, prize pool | [`0x7a9b…Fbd8`](https://robinhoodchain.blockscout.com/address/0x7a9b811C490F4F089f63bC6001d801216846Fbd8) |
-| Quest | Levels/forge craft, arena PvP | [`0x9Ef0…9451`](https://robinhoodchain.blockscout.com/address/0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451) |
-| QuestEndgame | High levels | [`0xDC91…7Fa6`](https://robinhoodchain.blockscout.com/address/0xDC9100bDFfC996e509b0e49934aF006785887Fa6) |
+| Game | Ranked entry, daily items, run record, prize pool | [`0x87A5…74E3`](https://robinhoodchain.blockscout.com/address/0x87A52585d84A2E649315B302eb713501095674E3) |
+| Quest | Levels/forge craft, arena PvP | [`0x2DA0…3175`](https://robinhoodchain.blockscout.com/address/0x2DA0821b7830e8E3183aab7D412D5f643F053175) |
+| QuestEndgame | High levels | [`0xeDCD…8fEd`](https://robinhoodchain.blockscout.com/address/0xeDCD2AF1EF29e9788D6402e2B1E09209f0a98fEd) |
 | Names | Unique `@name`, `sendToName` | [`0x4A09…3B63`](https://robinhoodchain.blockscout.com/address/0x4A09d12912dA069687Ce1F568908D18409Eb3B63) |
 | Shop | Starter gift, costumes / wardrobe | [`0xfA88…20eE`](https://robinhoodchain.blockscout.com/address/0xfA881eE41e048Db6343C6fdd77b5F45EF0F420eE) |
-| Armory | Weapons, ammo, play-to-earn claims | [`0xd667…c2c7`](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7) |
+| Armory | Weapons, ammo, play-to-earn claims | [`0x1B80…c303`](https://robinhoodchain.blockscout.com/address/0x1B8093B8be96ccf8Bb2D0f2EDB416e2c8514c303) |
 | Account impl | EIP-7702 delegate | [`0xaE20…F392`](https://robinhoodchain.blockscout.com/address/0xaE20DBB3853875aa6F0C68e2a831aD6F1d90F392) |
 | Relayer | Pays ETH gas; receives WIF gas share | [`0x00E7…A26a`](https://robinhoodchain.blockscout.com/address/0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a) |
 | Treasury / deployer | Owner & fee recipient | [`0x2bCE…958E`](https://robinhoodchain.blockscout.com/address/0x2bCEc454514201d867982ecDE9766DC2ed87958E) |
@@ -197,16 +197,16 @@ Zeron's starter and reward balances are **pre-funded contract balances**, not ne
 
 1. **Players generate fees.** A player pays the ranked daily entry fee, and players can also buy daily-run items.
 2. **Fees fund the prize.** The Game contract retains the configured share of those fees. At the current 20% destruction setting, **80%** is added to `pool[today]`.
-3. **The contract pays the winner.** After the day ends, anyone can call `settle(day)`. The contract transfers that day's accumulated pool to the top ranked player. If no leader exists, the pool rolls into the current day.
+3. **The contract pays the podium.** After the day ends, anyone can call `settle(day)`. The contract pays that day's pool to the top three ranked players (default 50/30/20). Empty podium seats roll their share into the current day.
 4. **Competition restarts.** Players return for the next daily contest. New ranked entries and item purchases generate the next pool.
 
 This is a real fee → prize pool → player reward → next competition loop. It is not a guaranteed yield or a promise of a fixed prize: pool size depends on actual player activity and paid item usage. The contract's `Entered`, `Bought`, and `Settled` events are the source of truth for contributions and payouts.
 
-### Separate Armory rewards: prefunded and manually replenished
+### Separate Armory rewards: self-funding pool with an inflow cap
 
-Armory kill/level rewards are **not** paid from the ranked Game prize pool. They come from the separately prefunded Armory WIF balance. The deployed Armory has no fee-split setter or automatic route from weapon/ammo purchases into the reward pool. **0% of weapon/ammo fees is routed to Armory rewards.** The retained purchase share goes to the treasury; the configured destruction share goes to the dead address.
+Armory kill/level rewards are **not** paid from the ranked Game prize pool. They come from the Armory's own WIF balance. Since the 2026-11-09 flywheel cutover, the retained share of weapon/ammo purchases (50% after the dead-address share) stays in the Armory as reward pool, and total payouts in any trailing 24 hours are capped on-chain at 65% of trailing-24h purchase inflows.
 
-- **Live balance:** [View the Armory's WIF token balance on Blockscout](https://robinhoodchain.blockscout.com/address/0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7?tab=tokens). No dated numeric balance is published here because a current Blockscout snapshot could not be verified for this submission.
+- **Live balance:** [View the Armory's WIF token balance on Blockscout](https://robinhoodchain.blockscout.com/address/0x1B8093B8be96ccf8Bb2D0f2EDB416e2c8514c303?tab=tokens). No dated numeric balance is published here because a current Blockscout snapshot could not be verified for this submission.
 - **Daily cap:** the last verified production setting was 10 WIF per wallet/day. The live `dailyCap()` getter is the source of truth and should be rechecked before quoting the current cap.
 - **Funding policy:** the team reviews the balance every Monday. If it is below 30 days of payouts at the trailing-seven-day average, the team tops it back up toward that 30-day target. This is a manual treasury policy, not an on-chain automatic refill.
 - **Rewards stop when the pool is depleted.** No runway estimate is published; a cap is a maximum claim limit, not a forecast of daily outflow.
@@ -281,14 +281,14 @@ Menus / tracker / How segments in the demo were recorded on the live site (chrom
 Desktop fight keys in the current HUD/handler and updated How-it-works copy: **J** attack · **K** block/parry · **L** weapon special · **Q** potion · **F** finisher · **E** interact · WASD/arrows walk.
 
 
-## Self-funding flywheel (proposed — not yet deployed)
+## Self-funding flywheel (deployed on mainnet 2026-11-09)
 
-Branch: `feature/self-funding-flywheel`. Requires new Armory + Game contract deploys; do **not** migrate mainnet funds until Bamio explicitly approves.
+Deployed from PR #6 as new Game, Quest, QuestEndgame and Armory contracts (addresses in the table above). The old Armory's 174.3 WIF was migrated to the new Armory. A migrated balance only pays out once purchase inflows create payout room under the 65% cap.
 
 ### 1. Armory purchase remainder → reward pool
 Weapon/ammo fees still destroy `burnBps` (currently 50% → dEaD with `useBurn=false`). The **kept remainder stays in the Armory contract** instead of the treasury, so play refills the reward pool.
 
-Forge fees in `WifQuest` already call `game.addToPool(kept)` — no change needed there.
+Forge fees in `WifQuest` call `game.addToPool(kept)`; Quest was redeployed so they reach the new Game pool.
 
 ### 2. On-chain inflow payout cap (default 65%)
 `ZeronArmory.inflowPayoutBps` (default `6500`) caps total rewards paid in the trailing 24 hours at that share of trailing-24h purchase inflows. Tracked with 24 hourly buckets (`inflow24h`, `outflow24h`, `rollingPayoutRoom`). Still also enforces the per-wallet `dailyCap`.
