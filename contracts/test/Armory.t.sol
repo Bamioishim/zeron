@@ -17,13 +17,26 @@ contract ArmoryTest is Test {
     }
     function testFlow() public {
         vm.startPrank(p); w.approve(address(a), type(uint256).max); a.buy(5);
-        assertEq(w.balanceOf(tr), 100 ether); assertEq(a.ammo(p), 3); assertEq(a.equipped(p), 5);
+        // 50% burned, 50% stays in Armory reward pool (not treasury)
+        assertEq(w.balanceOf(tr), 0);
+        assertEq(a.inflow24h(), 100 ether);
+        assertEq(a.ammo(p), 3); assertEq(a.equipped(p), 5);
         uint256 b0 = w.balanceOf(p);
+        // Seed pool already has 1000; inflow room = 65% of 100 = 65
         a.claim(100 ether, 2, 7, block.timestamp + 60, sig(100 ether, 2, 7, 0, block.timestamp + 60));
-        assertEq(w.balanceOf(p) - b0, 100 ether); assertEq(a.ammo(p), 1); assertTrue(a.owns(p, 7));
+        assertEq(w.balanceOf(p) - b0, 65 ether); // capped by 65% inflow room (and under dailyCap 150)
+        assertEq(a.ammo(p), 1); assertTrue(a.owns(p, 7));
+        // Second claim: room exhausted
         a.claim(100 ether, 0, 0, block.timestamp + 60, sig(100 ether, 0, 0, 1, block.timestamp + 60));
-        assertEq(w.balanceOf(p) - b0, 150 ether); // capped
-        bytes memory bad = sig(1, 0, 0, 1, block.timestamp + 60); vm.expectRevert(); a.claim(1, 0, 0, block.timestamp + 60, bad); // replay
+        assertEq(w.balanceOf(p) - b0, 65 ether);
+        bytes memory bad = sig(1, 0, 0, 1, block.timestamp + 60); vm.expectRevert(); a.claim(1, 0, 0, block.timestamp + 60, bad);
         a.refill(); assertEq(a.ammo(p), 3);
+        // refill adds another 7.5 kept (50% of 15) to inflows
+        assertEq(a.inflow24h(), 107.5 ether);
+    }
+    function testInflowPayoutBpsConfigurable() public {
+        a.setInflowPayoutBps(7000);
+        assertEq(a.inflowPayoutBps(), 7000);
+        vm.expectRevert(); a.setInflowPayoutBps(10001);
     }
 }
