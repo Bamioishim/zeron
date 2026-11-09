@@ -120,7 +120,7 @@ PR #6 is live on mainnet: new Game (top-3 ranked settle), Quest (forge fees to t
 
 See [docs/TOKENOMICS.md](docs/TOKENOMICS.md) for per-function details and read-only verification commands.
 
-## Wallet, PIN, and recovery behavior
+## Wallet, PIN, and recovery behavior (dev notes)
 
 The game wallet key is generated and stored in the player's browser. PIN and recovery flows encrypt the wallet locally. The server-side vault stores encrypted wallet data and one-way verifiers, not plaintext PINs or recovery answers.
 
@@ -150,18 +150,34 @@ Do not deploy a preview branch directly to the production domain. Do not run con
 
 ## Known limitations
 
-- The relayer submits allowlisted calls and pays ETH gas; it is a trusted operational component.
-- Run results are replayed and signed by a server key. This is not fully trustless scoring.
-- Level salt is client-influenced.
-- Starter and reward pools are finite.
-- Mainnet FeeSink destruction is a dead-address transfer. Native token burning is not enabled.
-- The old testnet deployment (chain ID `46630`) and MockWIF addresses are historical only.
+The README carries a one-sentence summary only. The details are below.
+
+- **Trusted relayer.** The relayer submits allowlisted calls and pays ETH gas, so it is a trusted operational component.
+- **Server-authorized scores.** Run results are replayed and signed by a server key, so scoring is not fully trustless. The plan is to publish replay inputs and deterministic rules, support independent replay verification, add a challenge/dispute period, and later move to independently verifiable reward claims.
+- **Potion balance (ranked).** This is a known, reported balance issue: a full kit of bought potions (daily item 1, 2.5 WIF, +15 HP each) wins most ranked runs. The proposed fix is a per-run potion budget or diminishing returns per potion. Fights 5 and 10 already drop a full-heal potion, which makes the kit less necessary, but the issue is not solved. Treat it as open until a tuned replay test exists.
+- **Level salt grinding (campaign).** Campaign and event layouts are seeded with a client-chosen `salt` (`engine.ts` `seedOf`: `salt % 1000`, so 1,000 layouts per level). A player can reroll to an easier layout before a level clear that earns Armory rewards. The daily ranked dungeon is not affected because it is seeded by the day only. The proposed fix is to derive the salt from a server- or chain-issued value per attempt.
+- **Finite pools.** The starter and reward pools are finite and were seeded manually (Shop 100 WIF, Armory 200 WIF, later migrated as 174.3 WIF). The Armory pays nothing while `rollingPayoutRoom()` is 0, which happens when nobody has bought anything in the last 24 h.
+- **Not a supply burn.** Mainnet FeeSink destruction is a transfer to the dead address. Native token burning is not enabled.
+- **Out-of-date in-app copy (game code, not changed in the docs PR).** Two passages in `app/src/App.tsx` no longer match the deployed contracts:
+  - The Armory panel says the weapon-fee remainder "goes to the treasury". It stays in the Armory as the reward pool.
+  - The ranked panel and the How text say "the top ranked player" takes the pool. `settle` pays the top 3, 50/30/20.
+  - Fix both in a reviewed app change.
+- **History.** The old testnet deployment (chain ID `46630`) and the MockWIF addresses are historical only. MockWIF is used only in local Foundry tests; every mainnet pool holds real WIF.
+
+## Refreshing the README "Live economy" numbers
+
+The README snapshot is static and dated; no public read endpoint exists for a dynamic badge, because the `/api/*` routes are POST-only. To refresh it, run read-only calls against the public RPC. Send a browser-like `User-Agent` header, because the RPC returns 403 to bare clients.
+
+- `WIF.balanceOf(0x…dEaD)`, `WIF.balanceOf(Armory)`, `Game.pool(Game.today())`, `Armory.rollingPayoutRoom()`.
+- Zeron's share of the dead balance: WIF `Transfer` logs to `0x…dEaD` whose transaction `from` is the relayer `0x00E7…A26a`. These include the FeeSink shares of the current and pre-cutover contracts and the 0.1 WIF gas halves.
+- Rewards paid: WIF `Transfer` logs from the old Armory `0xd667…c2c7`, the new Armory, and both Game contracts to player wallets. Exclude the treasury migration claim of 174.3 WIF.
+- Old contracts: Game `0x7a9b811C490F4F089f63bC6001d801216846Fbd8`, Quest `0x9Ef0A663E1E137921Cc64098B15a620BdcEF9451`, QuestEndgame `0xDC9100bDFfC996e509b0e49934aF006785887Fa6`, Armory `0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7`.
 
 ## Demo and supporting docs
 
-- [Desktop demo video](docs/assets/zeron-desktop-demo.mp4)
-- [Screenshots and captions](docs/assets/CAPTIONS.md)
+- [Mainnet demo video, 43 s](docs/assets/zeron-demo.mp4), with its README GIF (`docs/assets/zeron-demo.gif`, seconds 3–33 at 960 px and 12 fps) and still (`docs/assets/zeron-hero.png`).
+  - The gameplay was recorded on the live production app. It was captured frame by frame at reduced game speed, then played back at normal speed.
+  - The burn and proof sections show real Blockscout transactions, e.g. the ranked entry [0xec66e9a2…c0e5](https://robinhoodchain.blockscout.com/tx/0xec66e9a2ecb19c872e8847876e63373c11a589cc6d1d2d04207d66ac9122c0e5): 10 WIF in, 2 WIF + 0.1 WIF gas to `0x…dEaD`.
+- [Older desktop demo](docs/assets/zeron-desktop-demo.mp4) (superseded). Its gameplay portion was recorded in local practice mode and is not evidence of onchain gameplay. Its screenshots and captions are in [CAPTIONS.md](docs/assets/CAPTIONS.md).
 - [Tokenomics](docs/TOKENOMICS.md)
 - [X thread copy](docs/SOCIAL-THREAD.md)
-
-The gameplay portion of the demo was recorded in local practice mode and is not evidence of on-chain gameplay transactions or token transfers. The public-site menus and tracker footage show the production interface.

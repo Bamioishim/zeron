@@ -4,7 +4,7 @@
 **Live app:** https://zeron-game.vercel.app  
 **Explorer:** https://robinhoodchain.blockscout.com  
 
-This document describes **what the deployed contracts and production frontend actually do**. Amounts below were verified with read-only `eth_call` against public RPC on **2026-11-06 ~02:02 WAT** (block **107180069**), and against `contracts/script/DeployMainnet.s.sol` + `app/src/shared/deployments.json`. They are a **point-in-time** snapshot where labelled as such—not a promise of future balances, USD value, or remaining sponsored actions.
+This document describes **what the deployed contracts and production frontend actually do**. Parameters and balances below were re-verified with read-only `eth_call` / `eth_getLogs` against public RPC on **2026-11-09 19:54 WAT** (block **110283289**) for the post-cutover contracts (first snapshot: 2026-11-06 ~02:02 WAT, block 107180069), and against `contracts/script/DeployMainnet.s.sol` + `app/src/shared/deployments.json`. They are a **point-in-time** snapshot where labelled as such—not a promise of future balances, USD value, or remaining sponsored actions.
 
 ---
 
@@ -20,10 +20,10 @@ Zeron uses the official **World is Flat** `$wif` on Robinhood Chain—not Solana
 | Official project | [@WIFonRH](https://x.com/WIFonRH) · [worldisflat.fun](https://worldisflat.fun/) |
 | Identity citation | [@WIFonRH post](https://x.com/WIFonRH/status/2107896657648173164) includes `robinhood:0x5173b8ea6923c2d40267890d45c46a3480954773` |
 
-**Supply snapshot (2026-11-06 ~02:02 WAT):**
+**Supply snapshot (2026-11-09 19:54 WAT, block 110283289):**
 
-- `totalSupply()` ≈ **999,997,630.616945 WIF**
-- Balance of burn sink `0x…dEaD` ≈ **115,211.307022 WIF** (chain-wide dead balance; **not** only Zeron)
+- `totalSupply()` ≈ **999,996,177.10 WIF**
+- Balance of burn sink `0x…dEaD` ≈ **116,272.05 WIF**. This is the chain-wide dead balance, **not** only Zeron's; Zeron's transfers make up 12.8 WIF of it (see the README *Live economy* section).
 
 DexScreener lists the same contract with website `worldisflat.fun` and social `x.com/WIFonRH`. Do not substitute another token merely because it is named WIF.
 
@@ -41,19 +41,29 @@ Shared logic lives in `contracts/src/FeeSink.sol`:
 | Contract | `useBurn()` | `burnBps` | Meaning of fee share |
 |---|---|---|---|
 | Game `WifDepths` | **false** | **2000** (20%) | 20% → dEaD, 80% kept (prize pool / contract) |
-| Quest `WifQuest` | **false** | **2000** (20%) | craft fees: 20% → dEaD |
+| Quest `WifQuest` | **false** | **2000** (20%) | craft fees: 20% → dEaD, 80% → Game prize pool (`addToPool`) |
 | Names `NameRegistryV2` | **false** | **5000** (50%) | rename: 50% → dEaD, 50% treasury |
 | Shop `ZeronShop` | **false** | **5000** (50%) | costume buys: 50% → dEaD, 50% treasury |
-| Armory `ZeronArmory` | **false** | **5000** (50%) | weapon buys / ammo: 50% → dEaD, 50% treasury |
+| Armory `ZeronArmory` | **false** | **5000** (50%) | weapon buys / ammo: 50% → dEaD, 50% kept in the Armory as reward pool |
 
 `app/src/shared/deployments.json` also has `"burnVerified": false`.
 
 **Do not claim “native burn is live” for Zeron sinks.** A static `burn(1)` simulation against the WIF token from a funded holder can succeed (the token appears burn-capable), but **Zeron’s FeeSinks are not configured to call it**. Destruction today is **transfer-to-dead**. Older UI copy used “burned” as shorthand for transfers to the dead address. The current interface labels these amounts as **destroyed**. FeeSink totals exclude the separate gas-fee transfers; neither path reduces `totalSupply` through Zeron's FeeSink configuration.
 
-### Contract-reported destroyed totals (FeeSink `totalDestroyed`, 2026-11-06 ~02:02 WAT)
+### Contract-reported destroyed totals (FeeSink `totalDestroyed`, 2026-11-09 19:54 WAT)
 
-| Sink | `totalDestroyed` |
-|---|---|
+| Sink | Current contract | Pre-cutover contract |
+|---|---|---|
+| Game | **2 WIF** | 2.1 WIF |
+| Quest (Forge + Arena) | **0** | 0.4 WIF |
+| Names | **0** | (unchanged contract) |
+| Shop (Wardrobe) | **3 WIF** | (unchanged contract) |
+| Armory | **0** | 3 WIF |
+| **Sum** | **5 WIF** | **5.5 WIF** |
+
+The in-app **Destroyed** tracker reads the current contracts only (it showed Dungeon 2 · Wardrobe 3 on Nov 9). These counters track FeeSink `_destroy` calls only. They exclude the separate **gas fee** halves sent to the dead address (23 × 0.1 = 2.3 WIF as of the snapshot; see §4). Together, 10.5 + 2.3 = **12.8 WIF** sent to `0x…dEaD` by Zeron, which matches the WIF `Transfer` logs.
+
+---|---|
 | Game | **0.5 WIF** |
 | Quest (Forge + Arena) | **0** |
 | Names | **0** |
@@ -144,13 +154,13 @@ Live costume prices (id → WIF): **1→6, 2→8, 3→12, 4→10, 5→10, 6→15
 
 | Action | Function | Amount | Destroy | Rest |
 |---|---|---|---|---|
-| Buy weapon | `buy(uint8)` | `price[id]` | **50%** → dEaD | **50%** → treasury |
-| Refill ammo | `refill()` | **1.5 WIF** (`ammoPrice`) | **50%** → dEaD | **50%** → treasury |
-| Claim rewards | `claim(...)` | 0 paid; pool pays out | none | capped payout |
+| Buy weapon | `buy(uint8)` | `price[id]` | **50%** → dEaD | **50%** stays in the Armory (reward pool) |
+| Refill ammo | `refill()` | **1.5 WIF** (`ammoPrice`) | **50%** → dEaD | **50%** stays in the Armory (reward pool) |
+| Claim rewards | `claim(...)` | 0 paid; pool pays out | none | clamped by `dailyCap`, `rollingPayoutRoom()` (65% of trailing-24h inflows) and the balance |
 
 Live weapon list prices (WIF): **1 Bow 6 · 2 Spear 9 · 3 Twin Daggers 12 · 4 Fire Staff 15 · 5 Bazooka 20 · 6 War Hammer 25 · 7 Pumpkin Launcher 18** (UI treats 7 as drop-only / not sold).  
 `dailyCap()` live = **10 WIF / wallet / day**. Older documentation used a 150 WIF figure; that is not the current mainnet cap.  
-Frontend `rewardScaleBps = 1000` applies a **0.1×** mainnet payout scale. The interface now shows the scaled amounts directly: **0.3 WIF** per small enemy and **1 WIF** per boss / level-clear reward unit, subject to the prefunded pool and 10 WIF daily cap.
+Frontend `rewardScaleBps = 1000` applies a **0.1×** mainnet payout scale. The interface now shows the scaled amounts directly: **0.3 WIF** per small enemy and **1 WIF** per boss / level-clear reward unit, subject to the pool balance, the 65% inflow cap and the 10 WIF daily cap.
 
 ### 5.4 Game — `WifDepths`
 
@@ -166,13 +176,13 @@ Live item prices: id **1 = 2.5**, **2 = 4**, **3 = 4** WIF.
 
 | Action | Function | Amount | Destroy | Notes |
 |---|---|---|---|---|
-| Craft | `craft(uint8)` | `craftFee * tier` with **craftFee = 2 WIF** | **20%** of fee → dEaD | rest kept / routed per contract |
-| PvP stake | `challenge` / resolve | **pvpStake = 1 WIF** | **pvpBurnBps = 1000 (10%)** of stake destroyed on resolve | remainder to winner side per contract |
+| Craft | `craft(uint8)` | `craftFee * tier` with **craftFee = 2 WIF** | **20%** of fee → dEaD | 80% → today's Game prize pool (`game.addToPool`) |
+| PvP stake | `challenge` then `resolve` | **pvpStake = 1 WIF** | **pvpBurnBps = 1000 (10%)** of stake destroyed on resolve | 90% to the winner. If an NPC defender wins, it goes to the Game prize pool. A defender never loses WIF. |
 | Level clear | `recordClear(...)` | 0 WIF (materials + optional armory claim in same batch) | — | server-signed |
 
 ### 5.6 Faucets / sinks summary
 
-- **Faucets:** `starter()` (5 WIF from shop balance); armory `claim` (from armory WIF pool, clamped by `dailyCap` and balance).
+- **Faucets:** `starter()` (5 WIF from shop balance); armory `claim` (from armory WIF pool, clamped by `dailyCap`, `rollingPayoutRoom()` and balance); ranked `settle` (top 3 of that day's pool).
 - **Token fees:** shop/armory/names/game/quest as above.
 - **Gas token fee:** 0.2 WIF / sponsored batch (half dead, half relayer).
 - **No minting** in game contracts—rewards only while prefunded pools last.
@@ -206,8 +216,8 @@ This is a real fee → prize pool → player reward → next competition loop. I
 
 Armory kill/level rewards are **not** paid from the ranked Game prize pool. They come from the Armory's own WIF balance. Since the 2026-11-09 flywheel cutover, the retained share of weapon/ammo purchases (50% after the dead-address share) stays in the Armory as reward pool, and total payouts in any trailing 24 hours are capped on-chain at 65% of trailing-24h purchase inflows.
 
-- **Live balance:** [View the Armory's WIF token balance on Blockscout](https://robinhoodchain.blockscout.com/address/0x1B8093B8be96ccf8Bb2D0f2EDB416e2c8514c303?tab=tokens). No dated numeric balance is published here because a current Blockscout snapshot could not be verified for this submission.
-- **Daily cap:** the last verified production setting was 10 WIF per wallet/day. The live `dailyCap()` getter is the source of truth and should be rechecked before quoting the current cap.
+- **Balance (2026-11-09 19:54 WAT):** **174.3 WIF** (`WIF.balanceOf(Armory)`). All of it is the manually seeded balance (200 WIF seeded into the first Armory, minus 25.7 WIF paid out, migrated on Nov 9). `rollingPayoutRoom()` was **0** at that time, because there were no purchases in the trailing 24 h. Check the [live balance on Blockscout](https://robinhoodchain.blockscout.com/address/0x1B8093B8be96ccf8Bb2D0f2EDB416e2c8514c303?tab=tokens).
+- **Daily cap:** `dailyCap()` = 10 WIF per wallet/day, and `inflowPayoutBps()` = 6500, both read 2026-11-09. The live getters remain the source of truth.
 - **Funding policy:** the team reviews the balance every Monday. If it is below 30 days of payouts at the trailing-seven-day average, the team tops it back up toward that 30-day target. This is a manual treasury policy, not an on-chain automatic refill.
 - **Rewards stop when the pool is depleted.** No runway estimate is published; a cap is a maximum claim limit, not a forecast of daily outflow.
 
@@ -223,7 +233,7 @@ Planned decentralization: publish replay inputs and deterministic rules, support
 - `SPONSOR_*` environment settings are operational controls. The EIP-7702 account contract independently enforces its hard cap of 20 sponsored batches per player per day.
 - The PIN vault stores encrypted wallet ciphertext and one-way verifiers. With no `BLOB_READ_WRITE_TOKEN`, the API falls back to in-memory storage, which is not persistent.
 - Starter and reward pools are finite. A reward is paid only while the relevant pool has funds; rewards are not guaranteed income.
-- The level salt is client-influenced. Ranked scoring relies on server-side replay and signatures rather than a fully trustless execution model.
+- Campaign/event level salt is client-chosen (the daily ranked seed is not). This and the potion balance issue are tracked in [HANDOVER.md → Known limitations](../HANDOVER.md#known-limitations).
 - Armory item ID 8 (Auto-Hunt) has no configured mainnet sale price. The app no longer offers it in the shop or exposes its toggle.
 - The displayed FeeSink destruction total does not include the separate 0.1 WIF gas-fee transfers to the dead address.
 
@@ -260,21 +270,15 @@ Explorer: open each address above on https://robinhoodchain.blockscout.com.
 
 ## 10. Demo / capture status
 
-Reviewed desktop demo (real screen recordings only; final videoReview **PASS**):
-
 | Asset | Path |
 |---|---|
-| Demo MP4 (~63s) | [assets/zeron-desktop-demo.mp4](assets/zeron-desktop-demo.mp4) |
-| Thumbnail | [assets/zeron-desktop-demo-thumb.jpg](assets/zeron-desktop-demo-thumb.jpg) |
-| Stills + captions | [assets/CAPTIONS.md](assets/CAPTIONS.md) |
+| Mainnet demo MP4 (43 s, 1920×1080) | [assets/zeron-demo.mp4](assets/zeron-demo.mp4) |
+| README GIF (30 s, 960 px, 12 fps) | [assets/zeron-demo.gif](assets/zeron-demo.gif) |
+| Hero still | [assets/zeron-hero.png](assets/zeron-hero.png) |
+| Older desktop demo (superseded, includes local practice footage) | [assets/zeron-desktop-demo.mp4](assets/zeron-desktop-demo.mp4) · [CAPTIONS.md](assets/CAPTIONS.md) |
 | 4-post thread copy | [SOCIAL-THREAD.md](SOCIAL-THREAD.md) |
-| Rebuild script | [scripts/build-desktop-demo.sh](scripts/build-desktop-demo.sh) (`MEDIA_ROOT` / `MEDIA` for raw inputs) |
 
-### How gameplay was captured (existing practice path — not a new feature)
-
-Production at https://zeron-game.vercel.app has contracts deployed, so Play prompts `@name`. For **local practice footage only**, the existing app path `deployed === false` was used by supplying blank `wif` / `game` / `names` / `accountImpl` through the already-supported **`VITE_DEPLOYMENTS`** override (see `app/src/shared/chain.ts`). That shows the in-app banner **“Contracts aren't live yet, so this is practice mode.”** Onboarding/`act()` returns early—**no** account claim, login, payment, signatures, or mainnet writes. UI earn popups in practice are **simulated only**.
-
-Menus / tracker / How segments in the demo were recorded on the live site (chrome only). The footage predates the interface rename from “Burn” to “Destroyed”. Practice segments carry a persistent **LOCAL PRACTICE — NO FUNDS MOVED** overlay. The tracker segment shows FeeSink destruction → **`0x…dEaD`** (`useBurn=false`), not native `token.burn()` or proof that `totalSupply` fell. The demo is **not** on-chain transfer proof. Do not invent room counts or HUD WIF totals from OCR.
+The mainnet demo's gameplay was recorded on the live production app. Its burn and proof sections show real Blockscout transactions on Robinhood Chain. Example: ranked entry [0xec66e9a2…c0e5](https://robinhoodchain.blockscout.com/tx/0xec66e9a2ecb19c872e8847876e63373c11a589cc6d1d2d04207d66ac9122c0e5), block 110051411: 10 WIF in, 2 WIF FeeSink share plus 0.1 WIF gas to `0x…dEaD`, 8 WIF into the day's pool. The older desktop demo's gameplay was recorded in local practice mode (`deployed === false`, no funds moved) and is not onchain proof.
 
 ### Controls note
 
