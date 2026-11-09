@@ -4,6 +4,8 @@
 import { put, get } from '@vercel/blob'
 import { getAddress, isAddress, recoverMessageAddress, toHex, type Hex } from 'viem'
 import { sha256 } from '@noble/hashes/sha2.js'
+import { D, namesAbi } from '../shared/chain'
+import { pub } from './core'
 import { vaultDigest, vaultMessage } from './vaultmsg'
 
 type Rec = { v: 1; addr: Hex; salt: string; verifier: string; iv: string; ct: string; question?: string; rsalt?: string; rverifier?: string; riv?: string; rct?: string; fails: number; locks: number; lockUntil: number; updated: number }
@@ -17,11 +19,15 @@ const err = (status: number, msg: string, extra: any = {}) => Object.assign(new 
 // tiny in-memory store for local tests (no BLOB token)
 const mem = new Map<string, string>()
 const usesMemoryStore = () => process.env.NODE_ENV !== 'production' && !process.env.BLOB_READ_WRITE_TOKEN
-async function load(n: string): Promise<Rec | null> {
-  if (usesMemoryStore()) { const s = mem.get(path(n)); return s ? JSON.parse(s) : null }
-  const r = await get(path(n), { access: 'private', useCache: false } as any).catch(() => null) as any
+// get() returns null on a real 404 and throws on any other failure; never report a storage outage as "no PIN" / "not registered"
+const readBlob = async (p: string) => {
+  const r = await get(p, { access: 'private', useCache: false } as any).catch((e: any) => { console.warn('vault blob read failed', p, e?.message); throw err(503, "Couldn't reach account storage. Nothing was changed. Try again in a moment.") }) as any
   if (!r || r.statusCode !== 200) return null
   return JSON.parse(await new Response(r.stream).text())
+}
+async function load(n: string): Promise<Rec | null> {
+  if (usesMemoryStore()) { const s = mem.get(path(n)); return s ? JSON.parse(s) : null }
+  return readBlob(path(n))
 }
 async function save(n: string, rec: Rec) {
   const body = JSON.stringify(rec)
@@ -33,9 +39,7 @@ const walletPath = (a: string) => `wallets/${a.toLowerCase()}.json`
 type NameRec = { addr: Hex; created: number }
 async function loadName(n: string): Promise<NameRec | null> {
   if (usesMemoryStore()) { const s = mem.get(namePath(n)); return s ? JSON.parse(s) : null }
-  const r = await get(namePath(n), { access: 'private', useCache: false } as any).catch(() => null) as any
-  if (!r || r.statusCode !== 200) return null
-  return JSON.parse(await new Response(r.stream).text())
+  return readBlob(namePath(n))
 }
 async function saveName(n: string, rec: NameRec) {
   const body = JSON.stringify(rec)
@@ -44,9 +48,7 @@ async function saveName(n: string, rec: NameRec) {
 }
 async function loadWalletName(addr: string): Promise<{ name: string } | null> {
   if (usesMemoryStore()) { const s = mem.get(walletPath(addr)); return s ? JSON.parse(s) : null }
-  const r = await get(walletPath(addr), { access: 'private', useCache: false } as any).catch(() => null) as any
-  if (!r || r.statusCode !== 200) return null
-  return JSON.parse(await new Response(r.stream).text())
+  return readBlob(walletPath(addr))
 }
 async function saveWalletName(addr: string, name: string) {
   const body = JSON.stringify({ name, updated: Date.now() })
@@ -54,9 +56,21 @@ async function saveWalletName(addr: string, name: string) {
   await put(walletPath(addr), body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 60 } as any)
 }
 const ZERO = '0x0000000000000000000000000000000000000000' as Hex
+// Names claimed before the off-chain registry live only in the on-chain Names contract; read it as a fallback (read-only).
+const chainNames = () => !usesMemoryStore() && !!D.names
+async function chainOwner(n: string): Promise<Hex> {
+  if (!chainNames()) return ZERO
+  try { return getAddress(await pub().readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }) as Hex) }
+  catch (e: any) { console.warn('vault chain resolve failed', n, e?.shortMessage || e?.message); throw err(503, "Couldn't check that @name right now. Nothing was changed. Try again in a moment.") }
+}
+async function chainName(addr: Hex): Promise<string> {
+  if (!chainNames()) return ''
+  try { const s = String(await pub().readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'nameOf', args: [addr] }) || '').toLowerCase(); return nameRe.test(s) ? s : '' }
+  catch { return '' }
+}
 const ownerOf = async (n: string) => {
   const r = await loadName(n)
-  return r ? getAddress(r.addr) : ZERO
+  return r ? getAddress(r.addr) : await chainOwner(n)
 }
 const mins = (ms: number) => Math.max(1, Math.ceil(ms / 60_000))
 
@@ -67,13 +81,14 @@ export async function vault(body: any) {
     const addr = getAddress(body.addr)
     const stored = await loadWalletName(addr)
     if (stored?.name) return { name: stored.name }
+    const onchain = await chainName(addr)
+    if (onchain && (await ownerOf(onchain).catch(() => ZERO)) === addr) return { name: onchain }
     return { name: '' }
   }
   if (!nameRe.test(name)) throw err(400, 'Names are 3–15 characters: a–z, 0–9 and _.')
   if (op === 'lookup') {
-    const stored = await loadName(name)
-    const owner = stored?.addr || ZERO
-    return { exists: !!owner && getAddress(owner) !== ZERO, addr: owner }
+    const owner = await ownerOf(name)
+    return { exists: owner !== ZERO, addr: owner }
   }
   if (op === 'claim') {
     const { addr, sig } = body
@@ -85,6 +100,7 @@ export async function vault(body: any) {
     if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify wallet ownership for this name.")
     const existing = await loadName(name)
     if (existing && getAddress(existing.addr) !== a) throw err(409, `@${name} is already taken.`)
+    if (!existing) { const onchain = await chainOwner(name); if (onchain !== ZERO && onchain !== a) throw err(409, `@${name} is already taken.`) }
     if (!existing) {
       try { await saveName(name, { addr: a, created: Date.now() }) }
       catch {

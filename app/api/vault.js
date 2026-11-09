@@ -1725,10 +1725,10 @@ var init_toBytes = __esm({
 });
 
 // node_modules/@noble/hashes/esm/_u64.js
-function fromBig(n2, le = false) {
+function fromBig(n, le = false) {
   if (le)
-    return { h: Number(n2 & U32_MASK64), l: Number(n2 >> _32n & U32_MASK64) };
-  return { h: Number(n2 >> _32n & U32_MASK64) | 0, l: Number(n2 & U32_MASK64) | 0 };
+    return { h: Number(n & U32_MASK64), l: Number(n >> _32n & U32_MASK64) };
+  return { h: Number(n >> _32n & U32_MASK64) | 0, l: Number(n & U32_MASK64) | 0 };
 }
 function split(lst, le = false) {
   const len = lst.length;
@@ -1765,9 +1765,9 @@ var init_cryptoNode = __esm({
 function isBytes(a) {
   return a instanceof Uint8Array || ArrayBuffer.isView(a) && a.constructor.name === "Uint8Array";
 }
-function anumber(n2) {
-  if (!Number.isSafeInteger(n2) || n2 < 0)
-    throw new Error("positive integer expected, got " + n2);
+function anumber(n) {
+  if (!Number.isSafeInteger(n) || n < 0)
+    throw new Error("positive integer expected, got " + n);
 }
 function abytes(b, ...lengths) {
   if (!isBytes(b))
@@ -4927,11 +4927,11 @@ function bytesToNumberLE(bytes) {
   abytes2(bytes);
   return hexToNumber2(bytesToHex2(Uint8Array.from(bytes).reverse()));
 }
-function numberToBytesBE(n2, len) {
-  return hexToBytes2(n2.toString(16).padStart(len * 2, "0"));
+function numberToBytesBE(n, len) {
+  return hexToBytes2(n.toString(16).padStart(len * 2, "0"));
 }
-function numberToBytesLE(n2, len) {
-  return numberToBytesBE(n2, len).reverse();
+function numberToBytesLE(n, len) {
+  return numberToBytesBE(n, len).reverse();
 }
 function ensureBytes(title, hex, expectedLength) {
   let res;
@@ -4971,16 +4971,16 @@ function utf8ToBytes2(str) {
     throw new Error("string expected");
   return new Uint8Array(new TextEncoder().encode(str));
 }
-function inRange(n2, min, max) {
-  return isPosBig(n2) && isPosBig(min) && isPosBig(max) && min <= n2 && n2 < max;
+function inRange(n, min, max) {
+  return isPosBig(n) && isPosBig(min) && isPosBig(max) && min <= n && n < max;
 }
-function aInRange(title, n2, min, max) {
-  if (!inRange(n2, min, max))
-    throw new Error("expected valid " + title + ": " + min + " <= n < " + max + ", got " + n2);
+function aInRange(title, n, min, max) {
+  if (!inRange(n, min, max))
+    throw new Error("expected valid " + title + ": " + min + " <= n < " + max + ", got " + n);
 }
-function bitLen(n2) {
+function bitLen(n) {
   let len;
-  for (len = 0; n2 > _0n2; n2 >>= _1n2, len += 1)
+  for (len = 0; n > _0n2; n >>= _1n2, len += 1)
     ;
   return len;
 }
@@ -5070,8 +5070,8 @@ var init_utils4 = __esm({
     typeof Uint8Array.from([]).toHex === "function" && typeof Uint8Array.fromHex === "function";
     hexes2 = /* @__PURE__ */ Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
     asciis = { _0: 48, _9: 57, A: 65, F: 70, a: 97, f: 102 };
-    isPosBig = (n2) => typeof n2 === "bigint" && _0n2 <= n2;
-    bitMask = (n2) => (_1n2 << BigInt(n2)) - _1n2;
+    isPosBig = (n) => typeof n === "bigint" && _0n2 <= n;
+    bitMask = (n) => (_1n2 << BigInt(n)) - _1n2;
     u8n = (len) => new Uint8Array(len);
     u8fr = (arr) => Uint8Array.from(arr);
     validatorFns = {
@@ -5113,29 +5113,29 @@ function invert(number, modulo) {
     const q = b / a;
     const r = b % a;
     const m = x - u * q;
-    const n2 = y - v * q;
-    b = a, a = r, x = u, y = v, u = m, v = n2;
+    const n = y - v * q;
+    b = a, a = r, x = u, y = v, u = m, v = n;
   }
   const gcd = b;
   if (gcd !== _1n3)
     throw new Error("invert: does not exist");
   return mod(x, modulo);
 }
-function sqrt3mod4(Fp, n2) {
+function sqrt3mod4(Fp, n) {
   const p1div4 = (Fp.ORDER + _1n3) / _4n;
-  const root = Fp.pow(n2, p1div4);
-  if (!Fp.eql(Fp.sqr(root), n2))
+  const root = Fp.pow(n, p1div4);
+  if (!Fp.eql(Fp.sqr(root), n))
     throw new Error("Cannot find square root");
   return root;
 }
-function sqrt5mod8(Fp, n2) {
+function sqrt5mod8(Fp, n) {
   const p5div8 = (Fp.ORDER - _5n) / _8n;
-  const n22 = Fp.mul(n2, _2n2);
-  const v = Fp.pow(n22, p5div8);
-  const nv = Fp.mul(n2, v);
+  const n2 = Fp.mul(n, _2n2);
+  const v = Fp.pow(n2, p5div8);
+  const nv = Fp.mul(n, v);
   const i = Fp.mul(Fp.mul(nv, _2n2), v);
   const root = Fp.mul(nv, Fp.sub(i, Fp.ONE));
-  if (!Fp.eql(Fp.sqr(root), n2))
+  if (!Fp.eql(Fp.sqr(root), n))
     throw new Error("Cannot find square root");
   return root;
 }
@@ -5158,15 +5158,15 @@ function tonelliShanks(P) {
     return sqrt3mod4;
   let cc = _Fp.pow(Z, Q);
   const Q1div2 = (Q + _1n3) / _2n2;
-  return function tonelliSlow(Fp, n2) {
-    if (Fp.is0(n2))
-      return n2;
-    if (FpLegendre(Fp, n2) !== 1)
+  return function tonelliSlow(Fp, n) {
+    if (Fp.is0(n))
+      return n;
+    if (FpLegendre(Fp, n) !== 1)
       throw new Error("Cannot find square root");
     let M = S;
     let c = Fp.mul(Fp.ONE, cc);
-    let t = Fp.pow(n2, Q);
-    let R = Fp.pow(n2, Q1div2);
+    let t = Fp.pow(n, Q);
+    let R = Fp.pow(n, Q1div2);
     while (!Fp.eql(t, Fp.ONE)) {
       if (Fp.is0(t))
         return Fp.ZERO;
@@ -5242,9 +5242,9 @@ function FpInvertBatch(Fp, nums, passZero = false) {
   }, invertedAcc);
   return inverted;
 }
-function FpLegendre(Fp, n2) {
+function FpLegendre(Fp, n) {
   const p1mod2 = (Fp.ORDER - _1n3) / _2n2;
-  const powered = Fp.pow(n2, p1mod2);
+  const powered = Fp.pow(n, p1mod2);
   const yes = Fp.eql(powered, Fp.ONE);
   const zero = Fp.eql(powered, Fp.ZERO);
   const no = Fp.eql(powered, Fp.neg(Fp.ONE));
@@ -5252,10 +5252,10 @@ function FpLegendre(Fp, n2) {
     throw new Error("invalid Legendre symbol result");
   return yes ? 1 : zero ? 0 : -1;
 }
-function nLength(n2, nBitLength) {
+function nLength(n, nBitLength) {
   if (nBitLength !== void 0)
     anumber(nBitLength);
-  const _nBitLength = nBitLength !== void 0 ? nBitLength : n2.toString(2).length;
+  const _nBitLength = nBitLength !== void 0 ? nBitLength : n.toString(2).length;
   const nByteLength = Math.ceil(_nBitLength / 8);
   return { nBitLength: _nBitLength, nByteLength };
 }
@@ -5296,10 +5296,10 @@ function Field(ORDER, bitLen2, isLE2 = false, redef = {}) {
     subN: (lhs, rhs) => lhs - rhs,
     mulN: (lhs, rhs) => lhs * rhs,
     inv: (num2) => invert(num2, ORDER),
-    sqrt: redef.sqrt || ((n2) => {
+    sqrt: redef.sqrt || ((n) => {
       if (!sqrtP)
         sqrtP = FpSqrt(ORDER);
-      return sqrtP(f, n2);
+      return sqrtP(f, n);
     }),
     toBytes: (num2) => isLE2 ? numberToBytesLE(num2, BYTES) : numberToBytesBE(num2, BYTES),
     fromBytes: (bytes) => {
@@ -5387,10 +5387,10 @@ function calcWOpts(W, scalarBits) {
   const shiftBy = BigInt(W);
   return { windows, windowSize, mask, maxNumber, shiftBy };
 }
-function calcOffsets(n2, window, wOpts) {
+function calcOffsets(n, window, wOpts) {
   const { windowSize, mask, maxNumber, shiftBy } = wOpts;
-  let wbits = Number(n2 & mask);
-  let nextN = n2 >> shiftBy;
+  let wbits = Number(n & mask);
+  let nextN = n >> shiftBy;
   if (wbits > windowSize) {
     wbits -= maxNumber;
     nextN += _1n4;
@@ -5429,13 +5429,13 @@ function wNAF(c, bits) {
       return getW(elm) !== 1;
     },
     // non-const time multiplication ladder
-    unsafeLadder(elm, n2, p = c.ZERO) {
+    unsafeLadder(elm, n, p = c.ZERO) {
       let d = elm;
-      while (n2 > _0n4) {
-        if (n2 & _1n4)
+      while (n > _0n4) {
+        if (n & _1n4)
           p = p.add(d);
         d = d.double();
-        n2 >>= _1n4;
+        n >>= _1n4;
       }
       return p;
     },
@@ -5474,13 +5474,13 @@ function wNAF(c, bits) {
      * @param n scalar (we don't check here, but should be less than curve order)
      * @returns real and fake (for const-time) points
      */
-    wNAF(W, precomputes, n2) {
+    wNAF(W, precomputes, n) {
       let p = c.ZERO;
       let f = c.BASE;
       const wo = calcWOpts(W, bits);
       for (let window = 0; window < wo.windows; window++) {
-        const { nextN, offset, isZero, isNeg, isNegF, offsetF } = calcOffsets(n2, window, wo);
-        n2 = nextN;
+        const { nextN, offset, isZero, isNeg, isNegF, offsetF } = calcOffsets(n, window, wo);
+        n = nextN;
         if (isZero) {
           f = f.add(constTimeNegate(isNegF, precomputes[offsetF]));
         } else {
@@ -5497,13 +5497,13 @@ function wNAF(c, bits) {
      * @param acc accumulator point to add result of multiplication
      * @returns point
      */
-    wNAFUnsafe(W, precomputes, n2, acc = c.ZERO) {
+    wNAFUnsafe(W, precomputes, n, acc = c.ZERO) {
       const wo = calcWOpts(W, bits);
       for (let window = 0; window < wo.windows; window++) {
-        if (n2 === _0n4)
+        if (n === _0n4)
           break;
-        const { nextN, offset, isZero, isNeg } = calcOffsets(n2, window, wo);
-        n2 = nextN;
+        const { nextN, offset, isZero, isNeg } = calcOffsets(n, window, wo);
+        n = nextN;
         if (isZero) {
           continue;
         } else {
@@ -5522,15 +5522,15 @@ function wNAF(c, bits) {
       }
       return comp;
     },
-    wNAFCached(P, n2, transform) {
+    wNAFCached(P, n, transform) {
       const W = getW(P);
-      return this.wNAF(W, this.getPrecomputes(W, P, transform), n2);
+      return this.wNAF(W, this.getPrecomputes(W, P, transform), n);
     },
-    wNAFCachedUnsafe(P, n2, transform, prev) {
+    wNAFCachedUnsafe(P, n, transform, prev) {
       const W = getW(P);
       if (W === 1)
-        return this.unsafeLadder(P, n2, prev);
-      return this.wNAFUnsafe(W, this.getPrecomputes(W, P, transform), n2, prev);
+        return this.unsafeLadder(P, n, prev);
+      return this.wNAFUnsafe(W, this.getPrecomputes(W, P, transform), n, prev);
     },
     // We calculate precomputes for elliptic curve point multiplication
     // using windowed method. This specifies window size and
@@ -5925,8 +5925,8 @@ function weierstrassPoints(opts) {
     is0() {
       return this.equals(Point2.ZERO);
     }
-    wNAF(n2) {
-      return wnaf.wNAFCached(this, n2, Point2.normalizeZ);
+    wNAF(n) {
+      return wnaf.wNAFCached(this, n, Point2.normalizeZ);
     }
     /**
      * Non-constant-time multiplication. Uses double-and-add algorithm.
@@ -6912,22 +6912,22 @@ var init_secp256k1 = __esm({
         // Endomorphism, see above
         beta: BigInt("0x7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee"),
         splitScalar: (k) => {
-          const n2 = secp256k1N;
+          const n = secp256k1N;
           const a1 = BigInt("0x3086d221a7d46bcde86c90e49284eb15");
           const b1 = -_1n6 * BigInt("0xe4437ed6010e88286f547fa90abfe4c3");
           const a2 = BigInt("0x114ca50f7a8e2f3f657c1108d9d44cfd8");
           const b2 = a1;
           const POW_2_128 = BigInt("0x100000000000000000000000000000000");
-          const c1 = divNearest(b2 * k, n2);
-          const c2 = divNearest(-b1 * k, n2);
-          let k1 = mod(k - c1 * a1 - c2 * a2, n2);
-          let k2 = mod(-c1 * b1 - c2 * b2, n2);
+          const c1 = divNearest(b2 * k, n);
+          const c2 = divNearest(-b1 * k, n);
+          let k1 = mod(k - c1 * a1 - c2 * a2, n);
+          let k2 = mod(-c1 * b1 - c2 * b2, n);
           const k1neg = k1 > POW_2_128;
           const k2neg = k2 > POW_2_128;
           if (k1neg)
-            k1 = n2 - k1;
+            k1 = n - k1;
           if (k2neg)
-            k2 = n2 - k2;
+            k2 = n - k2;
           if (k1 > POW_2_128 || k2 > POW_2_128) {
             throw new Error("splitScalar: Endomorphism failed, k=" + k);
           }
@@ -6937,7 +6937,7 @@ var init_secp256k1 = __esm({
     }, sha256);
     TAGGED_HASH_PREFIXES = {};
     pointToBytes = (point) => point.toRawBytes(true).slice(1);
-    numTo32b = (n2) => numberToBytesBE(n2, 32);
+    numTo32b = (n) => numberToBytesBE(n, 32);
     modP = (x) => mod(x, secp256k1P);
     modN = (x) => mod(x, secp256k1N);
     Point = /* @__PURE__ */ (() => secp256k1.ProjectivePoint)();
@@ -18220,8 +18220,7 @@ var deployments_default = {
   armory: "0xd66752DAd6F8e54EC60f763fF5E75301F86fc2c7",
   relayer: "0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a",
   gasFeeWei: "200000000000000000",
-  rewardScaleBps: 1e3,
-  starter: 5
+  rewardScaleBps: 1e3
 };
 
 // src/shared/chain.ts
@@ -18265,18 +18264,19 @@ var gameAbi = parseAbi([
   "function settle(uint64)",
   "function settled(uint64) view returns (bool)",
   "function recordRun(uint64 day,uint32 score,uint32 xp,uint64 deadline,uint8[] used,bytes sig)",
-  "event RunRecorded(address indexed player, uint64 indexed day, uint32 score, uint32 xp, uint32 streak, bool newLeader)"
+  "event RunRecorded(address indexed player, uint64 indexed day, uint32 score, uint32 xp, uint32 streak, bool newLeader)",
+  "event Entered(address indexed player, uint64 indexed day, uint256 fee, uint256 toPool)",
+  "event Bought(address indexed player, uint8 indexed item, uint256 qty, uint256 cost)",
+  "event Settled(uint64 indexed day, address indexed winner, uint256 prize)"
 ]);
 var shopAbi = parseAbi([
-  "function starter()",
   "function buy(uint8)",
   "function equip(uint8)",
   "function claimDrop(uint8,uint256,bytes)",
   "function price(uint8) view returns (uint256)",
-  "function wardrobe(address) view returns (uint32 mask, uint8 eq, bool starterUsed)",
+  "function wardrobe(address) view returns (uint32 mask, uint8 eq, bool)",
   "function equipped(address) view returns (uint8)",
   "function totalDestroyed() view returns (uint256)",
-  "function gotStarter(address) view returns (bool)",
   "event Bought(address indexed who, uint8 id, uint256 price)",
   "event Destroyed(uint256 amount, bool viaBurn)"
 ]);
@@ -18331,54 +18331,18 @@ var armoryAbi = parseAbi([
 
 // src/shared/engine.ts
 var LEVELS = [
-  {
-    name: "The Mudflats",
-    family: "Slimes",
-    minions: [["slime", "Mud Slime"], ["slime2", "Swamp Slime"], ["slug", "Sludge Slug"]],
-    boss: { key: "kslime", name: "King Slime", hp: 46, atk: 7, def: 1, gold: 60, special: "split", move: "splits and reforms", blurb: "Splits off blobs to heal itself. Hit it while it wobbles; parry the belly-slam." }
-  },
-  {
-    name: "Goblin Warrens",
-    family: "Goblins",
-    minions: [["goblin", "Goblin"], ["goblin", "Goblin Cutter"], ["goblin2", "Goblin Sneak"]],
-    boss: { key: "gchief", name: "Goblin Chief", hp: 54, atk: 9, def: 2, gold: 70, special: "summon", move: "summons a goblin", blurb: "Whistles for help: a summoned goblin swings right after him. Block twice." }
-  },
-  {
-    name: "Bone Crypt",
-    family: "Skeletons",
-    minions: [["skull", "Skeleton"], ["skull", "Skeleton Guard"], ["skull2", "Bone Archer"]],
-    boss: { key: "slord", name: "Skeleton Lord", hp: 64, atk: 9, def: 4, gold: 80, special: "bone", move: "throws a bone", blurb: "Hurls a huge bone. Block it or parry at the last moment." }
-  },
-  {
-    name: "Orc Barracks",
-    family: "Orcs",
-    minions: [["orc", "Orc Grunt"], ["orc2", "Masked Orc"], ["orc3", "Orc Shaman"]],
-    boss: { key: "owar", name: "Orc Warlord", hp: 74, atk: 10, def: 3, gold: 90, special: "charge", move: "CHARGES", blurb: "Lowers his head and charges. A parry stops him cold." }
-  },
-  {
-    name: "Ember Pit",
-    family: "Demons",
-    minions: [["imp", "Imp"], ["chort", "Chort"], ["imp", "Fire Imp"]],
-    boss: { key: "demon", name: "The Demon", hp: 86, atk: 11, def: 4, gold: 100, special: "fire", move: "breathes fire", blurb: "Fire breath burns for extra damage unless you block it." }
-  },
-  {
-    name: "Grave Chapel",
-    family: "Necromancers",
-    minions: [["necro", "Acolyte"], ["necro", "Necromancer"], ["zombie0", "Risen Corpse"]],
-    boss: { key: "nlord", name: "The Necromancer", hp: 92, atk: 12, def: 4, gold: 110, special: "raise", move: "raises the dead", blurb: "Raises the dead to mend himself. Interrupt the glow." }
-  },
-  {
-    name: "Ogre Den",
-    family: "Ogres",
-    minions: [["ogre", "Ogre"], ["ogre", "Ogre Brute"], ["ogre", "Ogre Bruiser"]],
-    boss: { key: "bogre", name: "Big Ogre", hp: 104, atk: 13, def: 5, gold: 120, special: "slam", move: "SLAMS the ground", blurb: "Ground slams hit hard and keep coming. Armor and potions." }
-  },
-  {
-    name: "The Rot",
-    family: "Zombies",
-    minions: [["zombie", "Zombie"], ["zombie2", "Ice Zombie"], ["zombie", "Ghoul"]],
-    boss: { key: "bzombie", name: "Big Zombie", hp: 116, atk: 14, def: 5, gold: 140, special: "grab", move: "GRABS you", blurb: "A grab drains your energy. Block, then strike back." }
-  }
+  { name: "The Mudflats", family: "Slimes", minions: [["slime", "Mud Slime"], ["slime2", "Swamp Slime"], ["slug", "Sludge Slug"]], boss: { key: "kslime", name: "King Slime", hp: 46, atk: 7, def: 1, gold: 60, special: "split", move: "splits and reforms", blurb: "Splits off blobs to heal itself. Hit it while it wobbles; parry the belly-slam." } },
+  { name: "Goblin Warrens", family: "Goblins", minions: [["goblin", "Goblin Raider"], ["goblin2", "Warrens Stalker"], ["wogol", "Goblin Hound"]], boss: { key: "gchief", name: "Goblin Chief", hp: 54, atk: 9, def: 2, gold: 70, special: "summon", move: "summons a goblin", blurb: "Whistles for help: a summoned goblin swings right after him. Block twice." } },
+  { name: "Bone Crypt", family: "Undead", minions: [["skull", "Rattle Skeleton"], ["skull2", "Crypt Mage"], ["zombie0", "Bone Walker"]], boss: { key: "slord", name: "Skeleton Lord", hp: 64, atk: 9, def: 4, gold: 80, special: "bone", move: "throws a bone", blurb: "Hurls a huge bone. Block it or parry at the last moment." } },
+  { name: "Orc Barracks", family: "Orcs", minions: [["orc", "Orc Grunt"], ["orc2", "Masked Orc"], ["orc3", "Orc Shaman"]], boss: { key: "owar", name: "Orc Warlord", hp: 74, atk: 10, def: 3, gold: 90, special: "charge", move: "CHARGES", blurb: "Lowers his head and charges. A parry stops him cold." } },
+  { name: "Ember Pit", family: "Demons", minions: [["imp", "Ash Imp"], ["chort", "Chort"], ["wogol", "Hell Hound"]], boss: { key: "demon", name: "The Demon", hp: 86, atk: 11, def: 4, gold: 100, special: "fire", move: "breathes fire", blurb: "Fire breath burns for extra damage unless you block it." } },
+  { name: "Grave Chapel", family: "Gravebound", minions: [["necro", "Acolyte"], ["doc", "Grave Doctor"], ["zombie0", "Risen Corpse"]], boss: { key: "nlord", name: "The Necromancer", hp: 92, atk: 12, def: 4, gold: 110, special: "raise", move: "raises the dead", blurb: "Raises the dead to mend himself. Interrupt the glow." } },
+  { name: "Ogre Den", family: "Brutes", minions: [["ogre", "Ogre"], ["golem", "Stone Brute"], ["orc2", "Ogre Tamer"]], boss: { key: "bogre", name: "Big Ogre", hp: 104, atk: 13, def: 5, gold: 120, special: "slam", move: "SLAMS the ground", blurb: "Ground slams hit hard and keep coming. Armor and potions." } },
+  { name: "The Rot", family: "Rotborn", minions: [["zombie", "Rot Walker"], ["zombie2", "Frost Ghoul"], ["bigzombie", "Plague Brute"]], boss: { key: "bzombie", name: "Big Zombie", hp: 116, atk: 14, def: 5, gold: 140, special: "grab", move: "GRABS you", blurb: "A grab drains your energy. Block, then strike back." } },
+  { name: "Frostbite Tundra", family: "Frostborn", minions: [["icezombie", "Ice Stalker"], ["angel", "Frost Wisp"], ["slug2", "Glacier Crawler"]], boss: { key: "frostboss", name: "The Frozen Titan", hp: 128, atk: 15, def: 6, gold: 155, special: "shell", move: "freezes behind an ice shell", blurb: "Its ice shell hardens its defence. Keep pressure on it and strike between freezes." } },
+  { name: "Sunken Catacombs", family: "Deep Ones", minions: [["swampbeast", "Drowned Lurker"], ["tiny_slug", "Cave Crawler"], ["lizard", "Sunken Sentinel"]], boss: { key: "deepboss", name: "The Drowned King", hp: 140, atk: 16, def: 6, gold: 170, special: "heal", move: "recovers lost health", blurb: "The Drowned King restores health when weakened. Keep dealing damage and do not waste turns." } },
+  { name: "The Haunted Carnival", family: "Cursed", minions: [["pumpkin", "Lantern Stalker"], ["jester", "Cursed Jester"], ["doc", "Hollow Ringmaster"]], boss: { key: "carnivalboss", name: "The Ringmaster", hp: 152, atk: 17, def: 7, gold: 185, special: "double", move: "unleashes a double strike", blurb: "The Ringmaster can strike twice. Defend when the wind-up starts." } },
+  { name: "Ashen Citadel", family: "Ashen Legion", minions: [["wogol", "Ash Hound"], ["orc3", "Ashen Warlock"], ["bigdemon", "Ember Fiend"]], boss: { key: "ashboss", name: "The Ashen Sovereign", hp: 168, atk: 18, def: 8, gold: 210, special: "mixed", move: "alternates heavy strikes, healing and hardening", blurb: "The final guardian mixes brutal attacks with recovery and defence. Bring upgraded gear." } }
 ];
 var MAX_LEVEL = LEVELS.length;
 
@@ -18397,58 +18361,94 @@ var vaultDigest = (b) => keccak256(toHex(`${b.salt}|${b.verifier}|${b.iv}|${b.ct
 
 // src/server/vault.ts
 var nameRe = /^[a-z0-9_]{3,15}$/;
-var hexRe = (n2) => new RegExp(`^0x[0-9a-f]${n2 ? `{${n2}}` : "+"}$`);
+var hexRe = (n) => new RegExp(`^0x[0-9a-f]${n ? `{${n}}` : "+"}$`);
 var MAX_FAILS = 5;
 var BASE_LOCK = 15 * 6e4;
 var MAX_LOCK = 24 * 36e5;
 var QUESTIONS = ["What is your best color?", "What was your first pet's name?", "What city were you born in?"];
-var path = (n2) => `vault/${n2}.json`;
+var path = (n) => `vault/${n}.json`;
 var err = (status, msg, extra = {}) => Object.assign(new Error(msg), { status, extra });
 var mem = /* @__PURE__ */ new Map();
-var useMem = () => process.env.NODE_ENV !== "production" && !process.env.BLOB_READ_WRITE_TOKEN;
-async function load(n2) {
-  if (useMem()) {
-    const s = mem.get(path(n2));
-    return s ? JSON.parse(s) : null;
-  }
-  const r = await get(path(n2), { access: "private", useCache: false }).catch(() => null);
+var usesMemoryStore = () => process.env.NODE_ENV !== "production" && !process.env.BLOB_READ_WRITE_TOKEN;
+var readBlob = async (p) => {
+  const r = await get(p, { access: "private", useCache: false }).catch((e) => {
+    console.warn("vault blob read failed", p, e?.message);
+    throw err(503, "Couldn't reach account storage. Nothing was changed. Try again in a moment.");
+  });
   if (!r || r.statusCode !== 200) return null;
   return JSON.parse(await new Response(r.stream).text());
+};
+async function load(n) {
+  if (usesMemoryStore()) {
+    const s = mem.get(path(n));
+    return s ? JSON.parse(s) : null;
+  }
+  return readBlob(path(n));
 }
-async function save(n2, rec) {
+async function save(n, rec) {
   const body = JSON.stringify(rec);
-  if (useMem()) {
-    mem.set(path(n2), body);
+  if (usesMemoryStore()) {
+    mem.set(path(n), body);
     return;
   }
-  await put(path(n2), body, { access: "private", allowOverwrite: true, addRandomSuffix: false, contentType: "application/json", cacheControlMaxAge: 60 });
+  await put(path(n), body, { access: "private", allowOverwrite: true, addRandomSuffix: false, contentType: "application/json", cacheControlMaxAge: 60 });
 }
-var namePath = (n2) => `names/${n2}.json`;
+var namePath = (n) => `names/${n}.json`;
 var walletPath = (a) => `wallets/${a.toLowerCase()}.json`;
-async function loadName(n2) {
-  if (useMem()) { const s2 = mem.get(namePath(n2)); return s2 ? JSON.parse(s2) : null; }
-  const r2 = await get(namePath(n2), { access: "private", useCache: false }).catch(() => null);
-  if (!r2 || r2.statusCode !== 200) return null;
-  return JSON.parse(await new Response(r2.stream).text());
+async function loadName(n) {
+  if (usesMemoryStore()) {
+    const s = mem.get(namePath(n));
+    return s ? JSON.parse(s) : null;
+  }
+  return readBlob(namePath(n));
 }
-async function saveName(n2, rec) {
+async function saveName(n, rec) {
   const body = JSON.stringify(rec);
-  if (useMem()) { mem.set(namePath(n2), body); return; }
-  await put(namePath(n2), body, { access: "private", allowOverwrite: false, addRandomSuffix: false, contentType: "application/json" });
+  if (usesMemoryStore()) {
+    mem.set(namePath(n), body);
+    return;
+  }
+  await put(namePath(n), body, { access: "private", allowOverwrite: false, addRandomSuffix: false, contentType: "application/json" });
 }
 async function loadWalletName(addr) {
-  if (useMem()) { const s2 = mem.get(walletPath(addr)); return s2 ? JSON.parse(s2) : null; }
-  const r2 = await get(walletPath(addr), { access: "private", useCache: false }).catch(() => null);
-  if (!r2 || r2.statusCode !== 200) return null;
-  return JSON.parse(await new Response(r2.stream).text());
+  if (usesMemoryStore()) {
+    const s = mem.get(walletPath(addr));
+    return s ? JSON.parse(s) : null;
+  }
+  return readBlob(walletPath(addr));
 }
 async function saveWalletName(addr, name) {
   const body = JSON.stringify({ name, updated: Date.now() });
-  if (useMem()) { mem.set(walletPath(addr), body); return; }
+  if (usesMemoryStore()) {
+    mem.set(walletPath(addr), body);
+    return;
+  }
   await put(walletPath(addr), body, { access: "private", allowOverwrite: true, addRandomSuffix: false, contentType: "application/json", cacheControlMaxAge: 60 });
 }
 var ZERO = "0x0000000000000000000000000000000000000000";
-var ownerOf = async (n2) => { const r2 = await loadName(n2); return r2 ? getAddress(r2.addr) : ZERO; };
+var chainNames = () => !usesMemoryStore() && !!D.names;
+async function chainOwner(n) {
+  if (!chainNames()) return ZERO;
+  try {
+    return getAddress(await pub().readContract({ address: D.names, abi: namesAbi, functionName: "resolve", args: [n] }));
+  } catch (e) {
+    console.warn("vault chain resolve failed", n, e?.shortMessage || e?.message);
+    throw err(503, "Couldn't check that @name right now. Nothing was changed. Try again in a moment.");
+  }
+}
+async function chainName(addr) {
+  if (!chainNames()) return "";
+  try {
+    const s = String(await pub().readContract({ address: D.names, abi: namesAbi, functionName: "nameOf", args: [addr] }) || "").toLowerCase();
+    return nameRe.test(s) ? s : "";
+  } catch {
+    return "";
+  }
+}
+var ownerOf = async (n) => {
+  const r = await loadName(n);
+  return r ? getAddress(r.addr) : await chainOwner(n);
+};
 var mins = (ms) => Math.max(1, Math.ceil(ms / 6e4));
 async function vault(body) {
   const op = String(body?.op || ""), name = String(body?.name || "").toLowerCase();
@@ -18457,27 +18457,36 @@ async function vault(body) {
     const addr = getAddress(body.addr);
     const stored = await loadWalletName(addr);
     if (stored?.name) return { name: stored.name };
+    const onchain = await chainName(addr);
+    if (onchain && await ownerOf(onchain).catch(() => ZERO) === addr) return { name: onchain };
     return { name: "" };
   }
   if (!nameRe.test(name)) throw err(400, "Names are 3\u201315 characters: a\u2013z, 0\u20139 and _.");
   if (op === "lookup") {
-    const stored = await loadName(name);
-    const owner = stored?.addr || ZERO;
-    return { exists: !!owner && getAddress(owner) !== ZERO, addr: owner };
+    const owner = await ownerOf(name);
+    return { exists: owner !== ZERO, addr: owner };
   }
   if (op === "claim") {
     const { addr, sig } = body;
     const ts = Number(body.ts);
     if (!isAddress(addr) || !Number.isFinite(ts) || Math.abs(Date.now() - ts) > 10 * 6e4) throw err(400, "Bad name-claim data. Try again.");
     const a = getAddress(addr);
-    const message = `Zeron: claim username\nname: @${name}\naddress: ${a}\ntime: ${ts}`;
+    const message = `Zeron: claim username
+name: @${name}
+address: ${a}
+time: ${ts}`;
     const who = await recoverMessageAddress({ message, signature: sig }).catch(() => null);
     if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify wallet ownership for this name.");
     const existing = await loadName(name);
     if (existing && getAddress(existing.addr) !== a) throw err(409, `@${name} is already taken.`);
     if (!existing) {
-      try { await saveName(name, { addr: a, created: Date.now() }); }
-      catch {
+      const onchain = await chainOwner(name);
+      if (onchain !== ZERO && onchain !== a) throw err(409, `@${name} is already taken.`);
+    }
+    if (!existing) {
+      try {
+        await saveName(name, { addr: a, created: Date.now() });
+      } catch {
         const raced = await loadName(name);
         if (!raced || getAddress(raced.addr) !== a) throw err(409, `@${name} is already taken.`);
       }
