@@ -18,7 +18,7 @@ The Vercel project is connected to this GitHub repository. Non-production branch
 
 Vercel SSO protection is enabled for **preview deployments only**. Production domains are public so players can access the game. Do not change this to `all_except_custom_domains` unless production access is intentionally being gated.
 
-Canonical production is `https://zeron-game.vercel.app` on the `wif-depths` Vercel project (it holds `RELAYER_KEY`, `RUN_SIGNER_KEY`, and `BLOB_READ_WRITE_TOKEN`). The `zeron-game` Vercel project serves the alias `zeron-game-sigma.vercel.app` and is not the player-facing production host unless keys are copied there. Prefer one production URL; keep sigma as a redirect or retire it after cutover.
+Canonical production is `https://zeron-game.vercel.app` on the `wif-depths` Vercel project (it holds `RELAYER_KEY`, `RUN_SIGNER_KEY`, and `BLOB_READ_WRITE_TOKEN`). The `zeron-game` Vercel project is retired: `zeron-game-sigma.vercel.app` serves a redirect-only deployment (308 to the canonical URL) and its Git builds are disabled with an ignore step of `exit 0`. Do not copy secrets to it.
 
 ## Repository layout
 
@@ -94,6 +94,16 @@ All addresses below are on Robinhood Chain, chain ID `4663`.
 | Treasury / deployer | `0x2bCEc454514201d867982ecDE9766DC2ed87958E` |
 
 The canonical token and contract addresses also appear in `app/src/shared/deployments.json`. Keep that file, the deploy script, and this table consistent.
+
+### Self-funding flywheel (merged, not deployed)
+
+The flywheel code from PR #6 is merged into `main`. It covers the Armory remainder kept as the reward pool, the 65% trailing-24h inflow payout cap and top-3 ranked settlement. **The mainnet contracts listed above are still the old ones.** Before cutover:
+
+- The owner `0x2bCEc454514201d867982ecDE9766DC2ed87958E` must sign every step. Its key is not in Vercel env.
+- The owner needs about 0.0003 ETH on chain 4663. On Nov 9 2026 it held 0.000076 ETH. The two contract creates estimate at about 4.05M gas, roughly 0.0001 ETH at 0.02 gwei, before config and migration transactions.
+- The old Armory has no rescue or withdraw function. Its 174.3 WIF can leave only through signer-signed `claim()`s, which are capped per wallet per day by `dailyCap`. The old Game's 10 WIF pool leaves only through a ranked winner at `settle`. Choose a migration path deliberately, for example owner `setCap`, then one signed owner claim, then a transfer to the new Armory, or leave the old pools to drain through play.
+- The new Armory pays out only up to 65% of trailing-24h purchase inflows. A migrated seed balance will not pay out until purchases flow.
+- The frontend ABI and `deployments.json`/`DEPLOYMENTS_OVERRIDE` must be updated together with the new addresses.
 
 ## Economy and fee model
 
