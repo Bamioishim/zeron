@@ -18717,7 +18717,6 @@ var deployments_default = {
   relayer: "0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a",
   gasFeeWei: "200000000000000000",
   rewardScaleBps: 1e3,
-  starter: 5
 };
 
 // src/shared/chain.ts
@@ -18764,15 +18763,13 @@ var gameAbi = parseAbi([
   "event RunRecorded(address indexed player, uint64 indexed day, uint32 score, uint32 xp, uint32 streak, bool newLeader)"
 ]);
 var shopAbi = parseAbi([
-  "function starter()",
   "function buy(uint8)",
   "function equip(uint8)",
   "function claimDrop(uint8,uint256,bytes)",
   "function price(uint8) view returns (uint256)",
-  "function wardrobe(address) view returns (uint32 mask, uint8 eq, bool starterUsed)",
+  "function wardrobe(address) view returns (uint32 mask, uint8 eq, bool)",
   "function equipped(address) view returns (uint8)",
   "function totalDestroyed() view returns (uint256)",
-  "function gotStarter(address) view returns (bool)",
   "event Bought(address indexed who, uint8 id, uint256 price)",
   "event Destroyed(uint256 amount, bool viaBurn)"
 ]);
@@ -18864,62 +18861,27 @@ function mulberry(seed) {
   };
 }
 var LEVELS = [
-  {
-    name: "The Mudflats",
-    family: "Slimes",
-    minions: [["slime", "Mud Slime"], ["slime2", "Swamp Slime"], ["slug", "Sludge Slug"]],
-    boss: { key: "kslime", name: "King Slime", hp: 46, atk: 7, def: 1, gold: 60, special: "split", move: "splits and reforms", blurb: "Splits off blobs to heal itself. Hit it while it wobbles; parry the belly-slam." }
-  },
-  {
-    name: "Goblin Warrens",
-    family: "Goblins",
-    minions: [["goblin", "Goblin"], ["goblin", "Goblin Cutter"], ["goblin2", "Goblin Sneak"]],
-    boss: { key: "gchief", name: "Goblin Chief", hp: 54, atk: 9, def: 2, gold: 70, special: "summon", move: "summons a goblin", blurb: "Whistles for help: a summoned goblin swings right after him. Block twice." }
-  },
-  {
-    name: "Bone Crypt",
-    family: "Skeletons",
-    minions: [["skull", "Skeleton"], ["skull", "Skeleton Guard"], ["skull2", "Bone Archer"]],
-    boss: { key: "slord", name: "Skeleton Lord", hp: 64, atk: 9, def: 4, gold: 80, special: "bone", move: "throws a bone", blurb: "Hurls a huge bone. Block it or parry at the last moment." }
-  },
-  {
-    name: "Orc Barracks",
-    family: "Orcs",
-    minions: [["orc", "Orc Grunt"], ["orc2", "Masked Orc"], ["orc3", "Orc Shaman"]],
-    boss: { key: "owar", name: "Orc Warlord", hp: 74, atk: 10, def: 3, gold: 90, special: "charge", move: "CHARGES", blurb: "Lowers his head and charges. A parry stops him cold." }
-  },
-  {
-    name: "Ember Pit",
-    family: "Demons",
-    minions: [["imp", "Imp"], ["chort", "Chort"], ["imp", "Fire Imp"]],
-    boss: { key: "demon", name: "The Demon", hp: 86, atk: 11, def: 4, gold: 100, special: "fire", move: "breathes fire", blurb: "Fire breath burns for extra damage unless you block it." }
-  },
-  {
-    name: "Grave Chapel",
-    family: "Necromancers",
-    minions: [["necro", "Acolyte"], ["necro", "Necromancer"], ["zombie0", "Risen Corpse"]],
-    boss: { key: "nlord", name: "The Necromancer", hp: 92, atk: 12, def: 4, gold: 110, special: "raise", move: "raises the dead", blurb: "Raises the dead to mend himself. Interrupt the glow." }
-  },
-  {
-    name: "Ogre Den",
-    family: "Ogres",
-    minions: [["ogre", "Ogre"], ["ogre", "Ogre Brute"], ["ogre", "Ogre Bruiser"]],
-    boss: { key: "bogre", name: "Big Ogre", hp: 104, atk: 13, def: 5, gold: 120, special: "slam", move: "SLAMS the ground", blurb: "Ground slams hit hard and keep coming. Armor and potions." }
-  },
-  {
-    name: "The Rot",
-    family: "Zombies",
-    minions: [["zombie", "Zombie"], ["zombie2", "Ice Zombie"], ["zombie", "Ghoul"]],
-    boss: { key: "bzombie", name: "Big Zombie", hp: 116, atk: 14, def: 5, gold: 140, special: "grab", move: "GRABS you", blurb: "A grab drains your energy. Block, then strike back." }
-  }
+  { name: 'The Mudflats', family: 'Slimes', minions: [['slime', 'Mud Slime'], ['slime2', 'Swamp Slime'], ['slug', 'Sludge Slug']], boss: { key: 'kslime', name: 'King Slime', hp: 46, atk: 7, def: 1, gold: 60, special: 'split', move: 'splits and reforms', blurb: 'Splits off blobs to heal itself. Hit it while it wobbles; parry the belly-slam.' } },
+  { name: 'Goblin Warrens', family: 'Goblins', minions: [['goblin', 'Goblin Raider'], ['goblin2', 'Warrens Stalker'], ['wogol', 'Goblin Hound']], boss: { key: 'gchief', name: 'Goblin Chief', hp: 54, atk: 9, def: 2, gold: 70, special: 'summon', move: 'summons a goblin', blurb: 'Whistles for help: a summoned goblin swings right after him. Block twice.' } },
+  { name: 'Bone Crypt', family: 'Undead', minions: [['skull', 'Rattle Skeleton'], ['skull2', 'Crypt Mage'], ['zombie0', 'Bone Walker']], boss: { key: 'slord', name: 'Skeleton Lord', hp: 64, atk: 9, def: 4, gold: 80, special: 'bone', move: 'throws a bone', blurb: 'Hurls a huge bone. Block it or parry at the last moment.' } },
+  { name: 'Orc Barracks', family: 'Orcs', minions: [['orc', 'Orc Grunt'], ['orc2', 'Masked Orc'], ['orc3', 'Orc Shaman']], boss: { key: 'owar', name: 'Orc Warlord', hp: 74, atk: 10, def: 3, gold: 90, special: 'charge', move: 'CHARGES', blurb: 'Lowers his head and charges. A parry stops him cold.' } },
+  { name: 'Ember Pit', family: 'Demons', minions: [['imp', 'Ash Imp'], ['chort', 'Chort'], ['wogol', 'Hell Hound']], boss: { key: 'demon', name: 'The Demon', hp: 86, atk: 11, def: 4, gold: 100, special: 'fire', move: 'breathes fire', blurb: 'Fire breath burns for extra damage unless you block it.' } },
+  { name: 'Grave Chapel', family: 'Gravebound', minions: [['necro', 'Acolyte'], ['doc', 'Grave Doctor'], ['zombie0', 'Risen Corpse']], boss: { key: 'nlord', name: 'The Necromancer', hp: 92, atk: 12, def: 4, gold: 110, special: 'raise', move: 'raises the dead', blurb: 'Raises the dead to mend himself. Interrupt the glow.' } },
+  { name: 'Ogre Den', family: 'Brutes', minions: [['ogre', 'Ogre'], ['golem', 'Stone Brute'], ['orc2', 'Ogre Tamer']], boss: { key: 'bogre', name: 'Big Ogre', hp: 104, atk: 13, def: 5, gold: 120, special: 'slam', move: 'SLAMS the ground', blurb: 'Ground slams hit hard and keep coming. Armor and potions.' } },
+  { name: 'The Rot', family: 'Rotborn', minions: [['zombie', 'Rot Walker'], ['zombie2', 'Frost Ghoul'], ['bigzombie', 'Plague Brute']], boss: { key: 'bzombie', name: 'Big Zombie', hp: 116, atk: 14, def: 5, gold: 140, special: 'grab', move: 'GRABS you', blurb: 'A grab drains your energy. Block, then strike back.' } },
+  { name: 'Frostbite Tundra', family: 'Frostborn', minions: [['icezombie', 'Ice Stalker'], ['angel', 'Frost Wisp'], ['slug2', 'Glacier Crawler']], boss: { key: 'frostboss', name: 'The Frozen Titan', hp: 128, atk: 15, def: 6, gold: 155, special: 'shell', move: 'freezes behind an ice shell', blurb: 'Its ice shell hardens its defence. Keep pressure on it and strike between freezes.' } },
+  { name: 'Sunken Catacombs', family: 'Deep Ones', minions: [['swampbeast', 'Drowned Lurker'], ['tiny_slug', 'Cave Crawler'], ['lizard', 'Sunken Sentinel']], boss: { key: 'deepboss', name: 'The Drowned King', hp: 140, atk: 16, def: 6, gold: 170, special: 'heal', move: 'recovers lost health', blurb: 'The Drowned King restores health when weakened. Keep dealing damage and do not waste turns.' } },
+  { name: 'The Haunted Carnival', family: 'Cursed', minions: [['pumpkin', 'Lantern Stalker'], ['jester', 'Cursed Jester'], ['doc', 'Hollow Ringmaster']], boss: { key: 'carnivalboss', name: 'The Ringmaster', hp: 152, atk: 17, def: 7, gold: 185, special: 'double', move: 'unleashes a double strike', blurb: 'The Ringmaster can strike twice. Defend when the wind-up starts.' } },
+  { name: 'Ashen Citadel', family: 'Ashen Legion', minions: [['wogol', 'Ash Hound'], ['orc3', 'Ashen Warlock'], ['bigdemon', 'Ember Fiend']], boss: { key: 'ashboss', name: 'The Ashen Sovereign', hp: 168, atk: 18, def: 8, gold: 210, special: 'mixed', move: 'alternates heavy strikes, healing and hardening', blurb: 'The final guardian mixes brutal attacks with recovery and defence. Bring upgraded gear.' } },
 ];
 var MAX_LEVEL = LEVELS.length;
 var ONCHAIN_MAX_LEVEL = 6;
 function levelDungeon(L) {
   if (L < 1 || L > MAX_LEVEL) throw new Error("bad level");
   const lv = LEVELS[L - 1];
-  const rooms = lv.minions.map(([key, name], i) => ({ key, name, hp: 10 + 6 * L + 2 * i, atk: 2 + L + (i === 2 ? 1 : 0), def: Math.floor((L - 1) / 2), gold: 6 + 3 * L + i }));
-  rooms.push({ ...lv.boss });
+  const rooms = lv.minions.map(([key, name], i) => ({ key, name, hp: 10 + 6 * L + 2 * i, atk: 2 + L + (i === 2 ? 1 : 0), def: Math.floor((L - 1) / 2) + (i === 2 && L >= 5 ? 1 : 0), gold: 6 + 3 * L + i }));
+  const bossScale = Math.max(0, L - 8);
+  rooms.push({ ...lv.boss, hp: lv.boss.hp + bossScale * 4, atk: lv.boss.atk + bossScale, def: lv.boss.def + Math.floor(bossScale / 2), gold: lv.boss.gold + bossScale * 5 });
   return rooms;
 }
 function lootFor(L) {
@@ -18940,13 +18902,26 @@ var seedOf = (m) => m.kind === "daily" ? m.day : m.kind === "event" ? 9e6 + (m.s
 function dungeonFor(day) {
   const r = mulberry(day * 7919 + 17);
   const rooms = [];
-  for (let i = 0; i < ROOMS - 1; i++) {
-    const pool = BESTIARY.slice(0, Math.min(BESTIARY.length, 2 + i));
-    const e = pool[Math.floor(r() * pool.length)];
-    const bump = Math.floor(r() * 3);
-    rooms.push({ ...e, hp: e.hp + bump * 2 + i * 2, atk: e.atk + (i >= 3 ? 1 : 0) });
+  const unique = new Map();
+  for (const level of LEVELS) for (const [key, name] of level.minions) if (!unique.has(key)) unique.set(key, { key, name });
+  const pool = [...unique.values()];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  rooms.push({ ...BOSS, hp: BOSS.hp + Math.floor(r() * 6) });
+  for (let i = 0; i < ROOMS - 1; i++) {
+    const base = pool[i];
+    const tier = i + 1;
+    const bump = Math.floor(r() * 3);
+    rooms.push({
+      ...base,
+      hp: 12 + Math.floor(r() * 10) + tier * 3 + bump * 2,
+      atk: 3 + Math.floor(r() * 3) + Math.floor(tier / 4),
+      def: Math.floor(tier / 6),
+      gold: 8 + tier * 2
+    });
+  }
+  rooms.push({ ...BOSS, hp: BOSS.hp + 28 + Math.floor(r() * 12), atk: BOSS.atk + 3, def: BOSS.def + 2, name: "The Daily Warden" });
   return rooms;
 }
 function start(mode, loadout, gear = NOGEAR) {

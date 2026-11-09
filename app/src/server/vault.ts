@@ -4,8 +4,6 @@
 import { put, get } from '@vercel/blob'
 import { getAddress, isAddress, recoverMessageAddress, toHex, type Hex } from 'viem'
 import { sha256 } from '@noble/hashes/sha2.js'
-import { D, namesAbi } from '../shared/chain'
-import { pub } from './core'
 import { vaultDigest, vaultMessage } from './vaultmsg'
 
 type Rec = { v: 1; addr: Hex; salt: string; verifier: string; iv: string; ct: string; question?: string; rsalt?: string; rverifier?: string; riv?: string; rct?: string; fails: number; locks: number; lockUntil: number; updated: number }
@@ -18,7 +16,7 @@ const err = (status: number, msg: string, extra: any = {}) => Object.assign(new 
 
 // tiny in-memory store for local tests (no BLOB token)
 const mem = new Map<string, string>()
-const usesMemoryStore = () => !process.env.BLOB_READ_WRITE_TOKEN
+const usesMemoryStore = () => process.env.NODE_ENV !== 'production' && !process.env.BLOB_READ_WRITE_TOKEN
 async function load(n: string): Promise<Rec | null> {
   if (usesMemoryStore()) { const s = mem.get(path(n)); return s ? JSON.parse(s) : null }
   const r = await get(path(n), { access: 'private', useCache: false } as any).catch(() => null) as any
@@ -30,12 +28,73 @@ async function save(n: string, rec: Rec) {
   if (usesMemoryStore()) { mem.set(path(n), body); return }
   await put(path(n), body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 60 } as any)
 }
-const ownerOf = async (n: string) => getAddress(await pub().readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }) as Hex)
+const namePath = (n: string) => `names/${n}.json`
+const walletPath = (a: string) => `wallets/${a.toLowerCase()}.json`
+type NameRec = { addr: Hex; created: number }
+async function loadName(n: string): Promise<NameRec | null> {
+  if (usesMemoryStore()) { const s = mem.get(namePath(n)); return s ? JSON.parse(s) : null }
+  const r = await get(namePath(n), { access: 'private', useCache: false } as any).catch(() => null) as any
+  if (!r || r.statusCode !== 200) return null
+  return JSON.parse(await new Response(r.stream).text())
+}
+async function saveName(n: string, rec: NameRec) {
+  const body = JSON.stringify(rec)
+  if (usesMemoryStore()) { mem.set(namePath(n), body); return }
+  await put(namePath(n), body, { access: 'private', allowOverwrite: false, addRandomSuffix: false, contentType: 'application/json' } as any)
+}
+async function loadWalletName(addr: string): Promise<{ name: string } | null> {
+  if (usesMemoryStore()) { const s = mem.get(walletPath(addr)); return s ? JSON.parse(s) : null }
+  const r = await get(walletPath(addr), { access: 'private', useCache: false } as any).catch(() => null) as any
+  if (!r || r.statusCode !== 200) return null
+  return JSON.parse(await new Response(r.stream).text())
+}
+async function saveWalletName(addr: string, name: string) {
+  const body = JSON.stringify({ name, updated: Date.now() })
+  if (usesMemoryStore()) { mem.set(walletPath(addr), body); return }
+  await put(walletPath(addr), body, { access: 'private', allowOverwrite: true, addRandomSuffix: false, contentType: 'application/json', cacheControlMaxAge: 60 } as any)
+}
+const ZERO = '0x0000000000000000000000000000000000000000' as Hex
+const ownerOf = async (n: string) => {
+  const r = await loadName(n)
+  return r ? getAddress(r.addr) : ZERO
+}
 const mins = (ms: number) => Math.max(1, Math.ceil(ms / 60_000))
 
 export async function vault(body: any) {
   const op = String(body?.op || ''), name = String(body?.name || '').toLowerCase()
+  if (op === 'walletName') {
+    if (!isAddress(body?.addr)) throw err(400, 'Bad wallet address.')
+    const addr = getAddress(body.addr)
+    const stored = await loadWalletName(addr)
+    if (stored?.name) return { name: stored.name }
+    return { name: '' }
+  }
   if (!nameRe.test(name)) throw err(400, 'Names are 3–15 characters: a–z, 0–9 and _.')
+  if (op === 'lookup') {
+    const stored = await loadName(name)
+    const owner = stored?.addr || ZERO
+    return { exists: !!owner && getAddress(owner) !== ZERO, addr: owner }
+  }
+  if (op === 'claim') {
+    const { addr, sig } = body
+    const ts = Number(body.ts)
+    if (!isAddress(addr) || !Number.isFinite(ts) || Math.abs(Date.now() - ts) > 10 * 60_000) throw err(400, 'Bad name-claim data. Try again.')
+    const a = getAddress(addr)
+    const message = `Zeron: claim username\nname: @${name}\naddress: ${a}\ntime: ${ts}`
+    const who = await recoverMessageAddress({ message, signature: sig }).catch(() => null)
+    if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify wallet ownership for this name.")
+    const existing = await loadName(name)
+    if (existing && getAddress(existing.addr) !== a) throw err(409, `@${name} is already taken.`)
+    if (!existing) {
+      try { await saveName(name, { addr: a, created: Date.now() }) }
+      catch {
+        const raced = await loadName(name)
+        if (!raced || getAddress(raced.addr) !== a) throw err(409, `@${name} is already taken.`)
+      }
+    }
+    await saveWalletName(a, name)
+    return { ok: true, name, addr: a }
+  }
   if (op === 'salt') {
     const r = await load(name)
     return r ? { exists: true, salt: r.salt, addr: r.addr, question: r.question || null, rsalt: r.rsalt || null, recovery: !!(r.rsalt && r.riv && r.rct) } : { exists: false }
@@ -45,12 +104,12 @@ export async function vault(body: any) {
     if (!isAddress(addr) || !hexRe(32).test(salt) || !hexRe(64).test(verifier) || !hexRe(24).test(iv) || !hexRe().test(ct) || ct.length > 400 || !QUESTIONS.includes(String(question)) || !hexRe(32).test(rsalt) || !hexRe(64).test(rverifier) || !hexRe(24).test(riv) || !hexRe().test(rct) || rct.length > 400) throw err(400, 'Bad PIN or recovery data. Try again.')
     if (!Number.isFinite(ts) || Math.abs(Date.now() - ts) > 10 * 60_000) throw err(400, 'Your clock looks off. Try again.')
     const a = getAddress(addr)
-    const who = await recoverMessageAddress({ message: vaultMessage(name, a, vaultDigest({ salt, verifier, iv, ct }), ts), signature: sig }).catch(() => null)
+    const who = await recoverMessageAddress({ message: vaultMessage(name, a, vaultDigest({ salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct }), ts), signature: sig }).catch(() => null)
     if (!who || getAddress(who) !== a) throw err(401, "Couldn't verify this device owns that wallet.")
-    if ((await ownerOf(name)) !== a) throw err(403, `@${name} isn't yours on-chain, so you can't set its PIN.`)
+    if ((await ownerOf(name)) !== a) throw err(403, `@${name} isn't registered to this wallet, so you can't set its PIN.`)
     const prev = await load(name)
     if (prev && prev.lockUntil > Date.now()) throw err(423, `@${name} is locked after too many wrong PINs. Try again in ${mins(prev.lockUntil - Date.now())} min.`)
-    await save(n, { v: 1, addr: a, salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() })
+    await save(name, { v: 1, addr: a, salt, verifier, iv, ct, question, rsalt, rverifier, riv, rct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() })
     return { ok: true }
   }
   if (op === 'login') {
@@ -72,7 +131,7 @@ export async function vault(body: any) {
       const left = MAX_FAILS - r.fails
       throw err(401, `Wrong PIN. ${left} ${left === 1 ? 'try' : 'tries'} left before a lock.`, { left })
     }
-    if ((await ownerOf(name)) !== getAddress(r.addr)) throw err(409, `@${name} has moved to another wallet, so this login is no longer valid.`)
+    if ((await ownerOf(name)) !== getAddress(r.addr)) throw err(409, `@${name} is no longer registered to this wallet.`)
     if (r.fails || r.locks) { r.fails = 0; r.locks = 0; await save(name, r) }
     return { addr: r.addr, iv: r.iv, ct: r.ct }
   }
@@ -95,8 +154,8 @@ export async function vault(body: any) {
     if (!r || !r.rsalt || !r.rverifier || !r.riv || !r.rct) throw err(404, 'Recovery is not set up for this name.')
     if (!isAddress(addr) || getAddress(addr) !== getAddress(r.addr) || !hexRe(32).test(salt) || !hexRe(64).test(verifier) || !hexRe(24).test(iv) || !hexRe().test(ct) || ct.length > 400 || !hexRe(64).test(auth)) throw err(400, 'Bad reset data.')
     if (toHex(sha256(Buffer.from(auth.slice(2), 'hex'))) !== r.rverifier) throw err(401, 'Wrong recovery answer.')
-    if ((await ownerOf(name)) !== getAddress(r.addr)) throw err(409, `@${name} has moved to another wallet.`)
-    await save(n, { ...r, salt, verifier, iv, ct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() })
+    if ((await ownerOf(name)) !== getAddress(r.addr)) throw err(409, `@${name} is no longer registered to this wallet.`)
+    await save(name, { ...r, salt, verifier, iv, ct, fails: 0, locks: 0, lockUntil: 0, updated: Date.now() })
     return { ok: true }
   }
   throw err(400, 'unknown op')

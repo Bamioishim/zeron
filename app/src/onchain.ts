@@ -22,67 +22,44 @@ async function blockAtOrAfter(timestamp: bigint, latest: bigint): Promise<bigint
 }
 
 /** Live mainnet activity. Counts are derived from public contract events, never client-side demo state. */
-export async function homeStats() {
-  const latest = await pub.getBlockNumber()
-  const tip = await pub.getBlock({ blockNumber: latest })
-  const sevenDaysAgo = tip.timestamp > 7n * 86400n ? tip.timestamp - 7n * 86400n : 0n
-  const from7d = await blockAtOrAfter(sevenDaysAgo, latest)
-  const recent = { fromBlock: from7d, toBlock: latest }
-  const [b, names, clears, runs, entries, purchases, settlements, rewards, batchLogs, armoryBalance, gameBurnBps] = await Promise.all([
-    totalBurned(),
-    pub.getLogs({ address: D.names as Hex, event: parseAbi(['event NameClaimed(address indexed who, string name)'])[0], fromBlock: latest > 400000n ? latest - 400000n : 0n, toBlock: latest }).catch(() => []),
-    pub.getContractEvents({ address: D.quest as Hex, abi: questAbi, eventName: 'LevelCleared', ...recent }).catch(() => []),
-    pub.getContractEvents({ address: D.game as Hex, abi: gameAbi, eventName: 'RunRecorded', ...recent }).catch(() => []),
-    pub.getContractEvents({ address: D.game as Hex, abi: gameAbi, eventName: 'Entered', ...recent }).catch(() => []),
-    pub.getContractEvents({ address: D.game as Hex, abi: gameAbi, eventName: 'Bought', ...recent }).catch(() => []),
-    pub.getContractEvents({ address: D.game as Hex, abi: gameAbi, eventName: 'Settled', ...recent }).catch(() => []),
-    D.armory ? pub.getContractEvents({ address: D.armory as Hex, abi: armoryAbi, eventName: 'Rewarded', ...recent }).catch(() => []) : Promise.resolve([]),
-    pub.getLogs({ event: parseAbi(['event Executed(uint256 nonce, uint256 calls)'])[0], fromBlock: from7d, toBlock: latest }).catch(() => []),
-    D.armory ? pub.readContract({ address: D.wif as Hex, abi: wifAbi, functionName: 'balanceOf', args: [D.armory as Hex] }).catch(() => 0n) as Promise<bigint> : Promise.resolve(0n),
-    pub.readContract({ address: D.game as Hex, abi: gameAbi, functionName: 'burnBps' }).catch(() => 2000n) as Promise<bigint>,
+/** Three landing/menu figures. Each read fails independently so a provider error is never displayed as zero. */
+export async function homeStats(): Promise<{ burned: bigint | null; players: number | null; clears: number | null }> {
+  const readBurned = async () => {
+    const values = await Promise.all(SINKS().map(([, address]) =>
+      pub.readContract({ address, abi: sinkAbi, functionName: 'totalDestroyed' }) as Promise<bigint>
+    ))
+    return values.reduce((sum, value) => sum + value, 0n)
+  }
+  const readPlayers = async () => {
+    const latest = await pub.getBlockNumber()
+    const logs = await pub.getLogs({
+      address: D.names as Hex,
+      event: parseAbi(['event NameClaimed(address indexed who, string name)'])[0],
+      fromBlock: latest > 400000n ? latest - 400000n : 0n,
+      toBlock: latest,
+    })
+    return new Set((logs as any[]).map(log => String(log.args?.who || '').toLowerCase()).filter(Boolean)).size
+  }
+  const readClears = async () => {
+    const latest = await pub.getBlockNumber()
+    const tip = await pub.getBlock({ blockNumber: latest })
+    const since = tip.timestamp > 7n * 86400n ? tip.timestamp - 7n * 86400n : 0n
+    const fromBlock = await blockAtOrAfter(since, latest)
+    const logs = await pub.getContractEvents({
+      address: D.quest as Hex, abi: questAbi, eventName: 'LevelCleared',
+      fromBlock, toBlock: latest,
+    })
+    return logs.length
+  }
+  const safe = async <T,>(read: () => Promise<T>): Promise<T | null> => {
+    try { return await read() } catch { return null }
+  }
+  const [burned, players, clears] = await Promise.all([
+    safe(readBurned), safe(readPlayers), safe(readClears),
   ])
-  const walletSet = new Set((names as any[]).map((l) => String(l.args?.who || '').toLowerCase()).filter(Boolean))
-  const daysByPlayer = new Map<string, Set<string>>()
-  for (const log of runs as any[]) {
-    const player = String(log.args?.player || '').toLowerCase()
-    if (!player) continue
-    const days = daysByPlayer.get(player) || new Set<string>()
-    days.add(String(log.args?.day))
-    daysByPlayer.set(player, days)
-  }
-  const returning = [...daysByPlayer.values()].filter((days) => days.size >= 2).length
-  const feeBps = 10000n - BigInt(gameBurnBps as bigint)
-  const entryPool = (entries as any[]).reduce((sum, log) => sum + BigInt(log.args?.toPool || 0n), 0n)
-  const itemPool = (purchases as any[]).reduce((sum, log) => sum + BigInt(log.args?.cost || 0n) * feeBps / 10000n, 0n)
-  const prizePoolFunded = entryPool + itemPool
-  const prizesPaid = (settlements as any[]).reduce((sum, log) => sum + BigInt(log.args?.prize || 0n), 0n)
-  const armoryPaid7d = (rewards as any[]).reduce((sum, log) => sum + BigInt(log.args?.amount || 0n), 0n)
-  const delegateCode = D.accountImpl ? `0xef0100${D.accountImpl.slice(2).toLowerCase()}` : ''
-  const batchAddresses = [...new Set((batchLogs as any[]).map((log) => String(log.address).toLowerCase()))]
-  const delegated = new Set((await Promise.all(batchAddresses.map(async (address) => {
-    const code = await pub.getCode({ address: address as Hex }).catch(() => undefined)
-    return code?.toLowerCase() === delegateCode ? address : ''
-  }))).filter(Boolean))
-  const batches7d = (batchLogs as any[]).filter((log) => delegated.has(String(log.address).toLowerCase())).length
-  const observedDays = Number(tip.timestamp - sevenDaysAgo) / 86400
-  const runwayDays = armoryPaid7d > 0n && observedDays > 0
-    ? Number(armoryBalance) / (Number(armoryPaid7d) / observedDays)
-    : null
-  return {
-    burned: b.total,
-    players: walletSet.size,
-    clears: (clears as any[]).length,
-    returning7d: returning,
-    runs7d: (runs as any[]).length,
-    batches7d,
-    prizePoolFunded7d: prizePoolFunded,
-    prizesPaid7d: prizesPaid,
-    armoryBalance,
-    armoryPaid7d,
-    armoryRunwayDays: runwayDays,
-  }
+  return { burned, players, clears }
 }
-export type BurnRow = { player: string; amount: bigint; sink: string; hash: Hex; block: bigint }
+export type BurnRow = { player: string; amount: bigint; sink: string; hash: Hex; block: bigint; viaBurn: boolean }
 /** recent Destroyed events across every fee sink; the paying player is the 7702 account the tx was sent to */
 export async function recentBurns(limit = 200): Promise<BurnRow[]> {
   const r = await range()
@@ -91,11 +68,11 @@ export async function recentBurns(limit = 200): Promise<BurnRow[]> {
   const pick = all.slice(0, limit)
   const txs = new Map<string, string>()
   await Promise.all([...new Set(pick.map((p) => p.l.transactionHash))].map(async (h) => { try { const t = await pub.getTransaction({ hash: h }); txs.set(h, (t.to || '') as string) } catch { /* skip */ } }))
-  return pick.map((p) => ({ player: txs.get(p.l.transactionHash) || '', amount: p.l.args.amount as bigint, sink: p.label, hash: p.l.transactionHash, block: p.l.blockNumber }))
+  return pick.map((p) => ({ player: txs.get(p.l.transactionHash) || '', amount: p.l.args.amount as bigint, sink: p.label, hash: p.l.transactionHash, block: p.l.blockNumber, viaBurn: Boolean(p.l.args.viaBurn) }))
 }
-export async function wardrobeOf(who: string): Promise<{ mask: number; eq: number; starterUsed: boolean } | null> {
+export async function wardrobeOf(who: string): Promise<{ mask: number; eq: number } | null> {
   if (!D.shop) return null
-  try { const r = await pub.readContract({ address: D.shop, abi: shopAbi, functionName: 'wardrobe', args: [who as Hex] }) as any; return { mask: Number(r[0]), eq: Number(r[1]), starterUsed: r[2] } } catch { return null }
+  try { const r = await pub.readContract({ address: D.shop, abi: shopAbi, functionName: 'wardrobe', args: [who as Hex] }) as any; return { mask: Number(r[0]), eq: Number(r[1]) } } catch { return null }
 }
 export async function shopPrices() {
   if (!D.shop) return {} as Record<number, bigint>

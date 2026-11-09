@@ -4,10 +4,10 @@ This document is the operational guide for maintaining the live Zeron deployment
 
 ## Release at a glance
 
-- **Production app:** https://zeron-game-sigma.vercel.app
+- **Production app:** https://zeron-game.vercel.app
 - **GitHub:** https://github.com/Bamioishim/zeron
 - **Production branch:** `main`
-- **Vercel project:** `zeron-game`
+- **Vercel project:** `wif-depths` (serves `zeron-game.vercel.app` and `wif-depths.vercel.app`)
 - **Vercel root directory:** `app/`
 - **Network:** Robinhood Chain mainnet, chain ID `4663`
 - **RPC:** https://rpc.mainnet.chain.robinhood.com
@@ -18,7 +18,7 @@ The Vercel project is connected to this GitHub repository. Non-production branch
 
 Vercel SSO protection is enabled for **preview deployments only**. Production domains are public so players can access the game. Do not change this to `all_except_custom_domains` unless production access is intentionally being gated.
 
-The legacy hostname `zeron-game.vercel.app` is still assigned to a separate older Vercel project/deployment. It was not reassigned during this release. Do not move that alias unless the owner explicitly requests the routing change.
+Canonical production is `https://zeron-game.vercel.app` on the `wif-depths` Vercel project (it holds `RELAYER_KEY`, `RUN_SIGNER_KEY`, and `BLOB_READ_WRITE_TOKEN`). The `zeron-game` Vercel project serves the alias `zeron-game-sigma.vercel.app` and is not the player-facing production host unless keys are copied there. Prefer one production URL; keep sigma as a redirect or retire it after cutover.
 
 ## Repository layout
 
@@ -99,7 +99,7 @@ The canonical token and contract addresses also appear in `app/src/shared/deploy
 
 - Players do not need ETH. The relayer pays network gas.
 - A standard sponsored batch costs **0.2 WIF**: 0.1 WIF goes to the dead address and 0.1 WIF goes to the relayer.
-- The starter grant and first `@name` claim are free-onboarding exceptions.
+- Username claims are off-chain (PIN vault registry). Sponsored on-chain actions still charge the standard 0.2 WIF gas fee unless marked free in the relayer.
 - Game and Quest FeeSinks send 20% of configured fees to the dead address.
 - Names, Shop, and Armory FeeSinks send 50% to the dead address.
 - PvP stake resolution sends 10% of the stake to the dead address.

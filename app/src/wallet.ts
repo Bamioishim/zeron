@@ -2,7 +2,7 @@
 // our sponsor pays gas via EIP-7702 (the key delegates once to WifAccount, then signs batches).
 import { createPublicClient, http, keccak256, encodeAbiParameters, type Hex } from 'viem'
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts'
-import { D, chain, accountAbi, BATCH_TYPES, gasFeeCalls, shopAbi, namesAbi, type Call } from './shared/chain'
+import { D, chain, accountAbi, BATCH_TYPES, gasFeeCalls, namesAbi, type Call } from './shared/chain'
 import { decodeFunctionData } from 'viem'
 
 const KEY = 'wifdepths.key.v1'
@@ -23,23 +23,19 @@ export function callsHash(calls: Call[]) {
 
 let queue: Promise<any> = Promise.resolve()
 /** One sponsored batch at a time (parallel batches would sign the same account nonce). */
-const fnOf = (c: Call, abi: any) => { try { return decodeFunctionData({ abi, data: c.data }).functionName } catch { return '' } }
-/** welcome gift and/or FIRST @name: free for the player (no WIF gas fee). Mirrors the relay's isOnboarding check. */
+/** The first @name claim is free for the player (no WIF gas fee). */
 export async function isFreeOnboarding(calls: Call[]) {
-  if (!calls.length || calls.length > 2) return false
-  let claim = false
-  for (const c of calls) {
-    const to = c.to.toLowerCase()
-    if (D.shop && to === D.shop.toLowerCase() && fnOf(c, shopAbi) === 'starter') continue
-    if (to === (D.names as string).toLowerCase() && fnOf(c, namesAbi) === 'claim') { claim = true; continue }
-    return false
-  }
-  if (!claim) return true
+  if (calls.length !== 1) return false
+  const call = calls[0]
+  if (call.to.toLowerCase() !== String(D.names).toLowerCase()) return false
+  let isClaim = false
+  try { isClaim = decodeFunctionData({ abi: namesAbi, data: call.data }).functionName === 'claim' } catch { return false }
+  if (!isClaim) return false
   const cur = await pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'nameOf', args: [account().address] }) as string
   return !cur
 }
 export function sponsored(calls: Call[]): Promise<{ hash: Hex; explorer: string }> {
-  // Standard sponsored batches prepend a 0.2 WIF fee split between the dead address and relayer; onboarding batches are free.
+  // Standard sponsored batches prepend a 0.2 WIF fee split between the dead address and relayer; the first @name claim is free.
   const prep = async () => ((await isFreeOnboarding(calls)) ? calls : [...gasFeeCalls(), ...calls])
   const go = () => prep().then((c) => sponsoredOnce(c, 0))
   const run = queue.then(go, go)

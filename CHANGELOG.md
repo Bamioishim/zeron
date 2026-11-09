@@ -2,6 +2,14 @@
 
 This file contains implementation history, testnet context, migration evidence, and older design notes that are intentionally kept out of the submission README.
 
+## 2026-11-09 — landing restore production cutover
+
+- Squashed the long `landing-restore` draft PR onto `main` as a single clean change set (backup tag `backup/pr4-tip-3c66fa4`).
+- Restored compact landing, Menu → Stats/Profile, PIN vault + recovery signature fixes, Blob-backed vault, off-chain username registry, 12-level campaign, and daily gauntlet updates.
+- Removed the one-time starter WIF claim from the app path.
+- Canonical production URL: `https://zeron-game.vercel.app` (Vercel project `wif-depths`).
+- Fixed Open Graph / Twitter meta to the production domain and added `app/public/og.png`.
+
 ## 2026-11-06 — submission cleanup
 
 - Clarified that Armory rewards are treasury-funded, with 0% of weapon/ammo fees routed to the pool.

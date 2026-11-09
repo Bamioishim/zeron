@@ -78,6 +78,8 @@ export async function signRun(body: { player: string; event?: boolean; day?: num
   body.day = Number(body.day)
   const today = Number(await p.readContract({ address: D.game as Hex, abi: gameAbi, functionName: 'today' }))
   if (body.day !== today) throw new Error('wrong day')
+  const lastRunDay = Number(await p.readContract({ address: D.game as Hex, abi: gameAbi, functionName: 'lastRunDay', args: [player] }))
+  if (lastRunDay === today) throw new Error('daily challenge already played today')
   const r = body.events ? rtReplay({ kind: 'daily', day: body.day }, body.loadout, body.events, g, arms.w, arms.ammo) : replay(body.day, body.loadout, body.moves || [], g)
   const nonce = await p.readContract({ address: D.game as Hex, abi: gameAbi, functionName: 'nonces', args: [player] })
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600)
@@ -109,7 +111,7 @@ function checkCall(c: Call) {
     } else if (f.functionName === 'transfer') {
       // gas fee in WIF only: to the burn address or to the gas sponsor
       const dest = getAddress(f.args![0] as Hex)
-      if (dest !== DEAD && (!D.relayer || dest !== getAddress(D.relayer))) throw new Error('transfer only for the gas fee')
+      if (dest === '0x0000000000000000000000000000000000000000') throw new Error('transfer to zero address')
     } else throw new Error(`token call not sponsored: ${f.functionName}`)
   } else if (to === ours[1]) decodeFunctionData({ abi: gameAbi, data: c.data })
   else if (to === ours[2]) decodeFunctionData({ abi: namesAbi, data: c.data })
@@ -125,15 +127,12 @@ function checkCall(c: Call) {
 
 const DEAD = getAddress('0x000000000000000000000000000000000000dEaD')
 import { gasFeeCalls } from '../shared/chain'
-/** fee-free onboarding batch: only the welcome gift and/or the player's FIRST @name (V2 registry: first name costs nothing) */
+/** fee-free onboarding batch: only the player's FIRST @name (V2 registry: first name costs nothing) */
 export function isOnboarding(calls: Call[]) {
-  if (!calls.length || calls.length > 2) return false
-  return calls.every((c) => {
-    const to = getAddress(c.to)
-    if ((D as any).shop && to === getAddress((D as any).shop)) return decodeFunctionData({ abi: shopAbi, data: c.data }).functionName === 'starter'
-    if (to === getAddress(D.names as Hex)) return decodeFunctionData({ abi: namesAbi, data: c.data }).functionName === 'claim'
-    return false
-  })
+  if (calls.length !== 1) return false
+  const call = calls[0]
+  if (getAddress(call.to) !== getAddress(D.names as Hex)) return false
+  return decodeFunctionData({ abi: namesAbi, data: call.data }).functionName === 'claim'
 }
 async function checkGasFee(calls: Call[], from: Hex) {
   const need = gasFeeCalls(); if (!need.length) return
@@ -146,8 +145,7 @@ async function checkGasFee(calls: Call[], from: Hex) {
   }
   if (calls.length < 3 || need.some((c, i) => calls[i].data.toLowerCase() !== c.data.toLowerCase() || getAddress(calls[i].to) !== getAddress(c.to)))
     throw new Error('gas fee in WIF missing')
-  if (calls.slice(2).some((c) => getAddress(c.to) === getAddress(D.wif as Hex) && decodeFunctionData({ abi: wifAbi, data: c.data }).functionName === 'transfer'))
-    throw new Error('transfer only for the gas fee')
+
 }
 export async function relay(body: { from: string; calls: { to: string; value: string; data: string }[]; deadline: string; sig: Hex;
   authorization?: { address: Hex; chainId: number; nonce: number; r: Hex; s: Hex; yParity: number } }) {
@@ -159,6 +157,8 @@ export async function relay(body: { from: string; calls: { to: string; value: st
   const calls: Call[] = body.calls.map((c) => ({ to: getAddress(c.to), value: BigInt(c.value), data: c.data as Hex }))
   if (calls.length < 1 || calls.length > 8) throw new Error('1-8 calls')
   calls.forEach(checkCall)
+  const startsDuel = calls.some((c) => getAddress(c.to) === getAddress(D.quest as Hex) && decodeFunctionData({ abi: questAbi, data: c.data }).functionName === 'challenge')
+  if (startsDuel && !process.env.RUN_SIGNER_KEY?.trim()) throw new Error('RUN_SIGNER_KEY not set; arena duel resolution is unavailable. No transaction was sent.')
   await checkGasFee(calls, from)
   const p = pub()
   const code = await p.getCode({ address: from })
@@ -197,7 +197,7 @@ export async function relay(body: { from: string; calls: { to: string; value: st
   const fee = BigInt(D.gasFeeWei || '0')
   if (fee && !isOnboarding(calls)) {
     const bal = await p.readContract({ address: D.wif as Hex, abi: wifAbi, functionName: 'balanceOf', args: [from] }) as bigint
-    if (bal < fee) throw new Error(`no gas wif: every move costs ${Number(fee) / 1e18} WIF in gas and you have ${Number(bal * 1000n / 10n ** 18n) / 1000}. Claim your welcome gift first.`)
+    if (bal < fee) throw new Error(`no gas wif: every move costs ${Number(fee) / 1e18} WIF in gas and you have ${Number(bal * 1000n / 10n ** 18n) / 1000}. Earn WIF in the dungeon or receive WIF from another player.`)
   }
   let gas: bigint
   try { gas = await p.estimateGas({ account: relayer, to: from, data, authorizationList } as any) }
