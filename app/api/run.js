@@ -18716,7 +18716,7 @@ var deployments_default = {
   armory: "0x1B8093B8be96ccf8Bb2D0f2EDB416e2c8514c303",
   relayer: "0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a",
   gasFeeWei: "200000000000000000",
-  rewardScaleBps: 1e3,
+  rewardScaleBps: 1e3
 };
 
 // src/shared/chain.ts
@@ -18760,7 +18760,10 @@ var gameAbi = parseAbi([
   "function settle(uint64)",
   "function settled(uint64) view returns (bool)",
   "function recordRun(uint64 day,uint32 score,uint32 xp,uint64 deadline,uint8[] used,bytes sig)",
-  "event RunRecorded(address indexed player, uint64 indexed day, uint32 score, uint32 xp, uint32 streak, bool newLeader)"
+  "event RunRecorded(address indexed player, uint64 indexed day, uint32 score, uint32 xp, uint32 streak, bool newLeader)",
+  "event Entered(address indexed player, uint64 indexed day, uint256 fee, uint256 toPool)",
+  "event Bought(address indexed player, uint8 indexed item, uint256 qty, uint256 cost)",
+  "event Settled(uint64 indexed day, address indexed winner, uint256 prize)"
 ]);
 var shopAbi = parseAbi([
   "function buy(uint8)",
@@ -18841,15 +18844,10 @@ var armoryAbi = parseAbi([
 ]);
 
 // src/shared/engine.ts
-var BESTIARY = [
-  { key: "slime", name: "Flat Slime", hp: 14, atk: 3, def: 0, gold: 8 },
-  { key: "bat", name: "Cave Bat", hp: 10, atk: 5, def: 0, gold: 10 },
-  { key: "skull", name: "Rattle Skull", hp: 20, atk: 4, def: 2, gold: 14 },
-  { key: "golem", name: "Moss Golem", hp: 28, atk: 5, def: 3, gold: 20 }
-];
+var DAILY_MINI = [4, 9];
 var BOSS = { key: "boss", name: "The Edge Warden", hp: 44, atk: 8, def: 2, gold: 60 };
-var ROOMS = 5;
-var MAX_TURNS = 80;
+var ROOMS = 15;
+var MAX_TURNS = 240;
 function mulberry(seed) {
   let a = seed >>> 0;
   return () => {
@@ -18861,25 +18859,32 @@ function mulberry(seed) {
   };
 }
 var LEVELS = [
-  { name: 'The Mudflats', family: 'Slimes', minions: [['slime', 'Mud Slime'], ['slime2', 'Swamp Slime'], ['slug', 'Sludge Slug']], boss: { key: 'kslime', name: 'King Slime', hp: 46, atk: 7, def: 1, gold: 60, special: 'split', move: 'splits and reforms', blurb: 'Splits off blobs to heal itself. Hit it while it wobbles; parry the belly-slam.' } },
-  { name: 'Goblin Warrens', family: 'Goblins', minions: [['goblin', 'Goblin Raider'], ['goblin2', 'Warrens Stalker'], ['wogol', 'Goblin Hound']], boss: { key: 'gchief', name: 'Goblin Chief', hp: 54, atk: 9, def: 2, gold: 70, special: 'summon', move: 'summons a goblin', blurb: 'Whistles for help: a summoned goblin swings right after him. Block twice.' } },
-  { name: 'Bone Crypt', family: 'Undead', minions: [['skull', 'Rattle Skeleton'], ['skull2', 'Crypt Mage'], ['zombie0', 'Bone Walker']], boss: { key: 'slord', name: 'Skeleton Lord', hp: 64, atk: 9, def: 4, gold: 80, special: 'bone', move: 'throws a bone', blurb: 'Hurls a huge bone. Block it or parry at the last moment.' } },
-  { name: 'Orc Barracks', family: 'Orcs', minions: [['orc', 'Orc Grunt'], ['orc2', 'Masked Orc'], ['orc3', 'Orc Shaman']], boss: { key: 'owar', name: 'Orc Warlord', hp: 74, atk: 10, def: 3, gold: 90, special: 'charge', move: 'CHARGES', blurb: 'Lowers his head and charges. A parry stops him cold.' } },
-  { name: 'Ember Pit', family: 'Demons', minions: [['imp', 'Ash Imp'], ['chort', 'Chort'], ['wogol', 'Hell Hound']], boss: { key: 'demon', name: 'The Demon', hp: 86, atk: 11, def: 4, gold: 100, special: 'fire', move: 'breathes fire', blurb: 'Fire breath burns for extra damage unless you block it.' } },
-  { name: 'Grave Chapel', family: 'Gravebound', minions: [['necro', 'Acolyte'], ['doc', 'Grave Doctor'], ['zombie0', 'Risen Corpse']], boss: { key: 'nlord', name: 'The Necromancer', hp: 92, atk: 12, def: 4, gold: 110, special: 'raise', move: 'raises the dead', blurb: 'Raises the dead to mend himself. Interrupt the glow.' } },
-  { name: 'Ogre Den', family: 'Brutes', minions: [['ogre', 'Ogre'], ['golem', 'Stone Brute'], ['orc2', 'Ogre Tamer']], boss: { key: 'bogre', name: 'Big Ogre', hp: 104, atk: 13, def: 5, gold: 120, special: 'slam', move: 'SLAMS the ground', blurb: 'Ground slams hit hard and keep coming. Armor and potions.' } },
-  { name: 'The Rot', family: 'Rotborn', minions: [['zombie', 'Rot Walker'], ['zombie2', 'Frost Ghoul'], ['bigzombie', 'Plague Brute']], boss: { key: 'bzombie', name: 'Big Zombie', hp: 116, atk: 14, def: 5, gold: 140, special: 'grab', move: 'GRABS you', blurb: 'A grab drains your energy. Block, then strike back.' } },
-  { name: 'Frostbite Tundra', family: 'Frostborn', minions: [['icezombie', 'Ice Stalker'], ['angel', 'Frost Wisp'], ['slug2', 'Glacier Crawler']], boss: { key: 'frostboss', name: 'The Frozen Titan', hp: 128, atk: 15, def: 6, gold: 155, special: 'shell', move: 'freezes behind an ice shell', blurb: 'Its ice shell hardens its defence. Keep pressure on it and strike between freezes.' } },
-  { name: 'Sunken Catacombs', family: 'Deep Ones', minions: [['swampbeast', 'Drowned Lurker'], ['tiny_slug', 'Cave Crawler'], ['lizard', 'Sunken Sentinel']], boss: { key: 'deepboss', name: 'The Drowned King', hp: 140, atk: 16, def: 6, gold: 170, special: 'heal', move: 'recovers lost health', blurb: 'The Drowned King restores health when weakened. Keep dealing damage and do not waste turns.' } },
-  { name: 'The Haunted Carnival', family: 'Cursed', minions: [['pumpkin', 'Lantern Stalker'], ['jester', 'Cursed Jester'], ['doc', 'Hollow Ringmaster']], boss: { key: 'carnivalboss', name: 'The Ringmaster', hp: 152, atk: 17, def: 7, gold: 185, special: 'double', move: 'unleashes a double strike', blurb: 'The Ringmaster can strike twice. Defend when the wind-up starts.' } },
-  { name: 'Ashen Citadel', family: 'Ashen Legion', minions: [['wogol', 'Ash Hound'], ['orc3', 'Ashen Warlock'], ['bigdemon', 'Ember Fiend']], boss: { key: 'ashboss', name: 'The Ashen Sovereign', hp: 168, atk: 18, def: 8, gold: 210, special: 'mixed', move: 'alternates heavy strikes, healing and hardening', blurb: 'The final guardian mixes brutal attacks with recovery and defence. Bring upgraded gear.' } },
+  { name: "The Mudflats", family: "Slimes", minions: [["slime", "Mud Slime"], ["slime2", "Swamp Slime"], ["slug", "Sludge Slug"]], boss: { key: "kslime", name: "King Slime", hp: 46, atk: 7, def: 1, gold: 60, special: "split", move: "splits and reforms", blurb: "Splits off blobs to heal itself. Hit it while it wobbles; parry the belly-slam." } },
+  { name: "Goblin Warrens", family: "Goblins", minions: [["goblin", "Goblin Raider"], ["goblin2", "Warrens Stalker"], ["wogol", "Goblin Hound"]], boss: { key: "gchief", name: "Goblin Chief", hp: 54, atk: 9, def: 2, gold: 70, special: "summon", move: "summons a goblin", blurb: "Whistles for help: a summoned goblin swings right after him. Block twice." } },
+  { name: "Bone Crypt", family: "Undead", minions: [["skull", "Rattle Skeleton"], ["skull2", "Crypt Mage"], ["zombie0", "Bone Walker"]], boss: { key: "slord", name: "Skeleton Lord", hp: 64, atk: 9, def: 4, gold: 80, special: "bone", move: "throws a bone", blurb: "Hurls a huge bone. Block it or parry at the last moment." } },
+  { name: "Orc Barracks", family: "Orcs", minions: [["orc", "Orc Grunt"], ["orc2", "Masked Orc"], ["orc3", "Orc Shaman"]], boss: { key: "owar", name: "Orc Warlord", hp: 74, atk: 10, def: 3, gold: 90, special: "charge", move: "CHARGES", blurb: "Lowers his head and charges. A parry stops him cold." } },
+  { name: "Ember Pit", family: "Demons", minions: [["imp", "Ash Imp"], ["chort", "Chort"], ["wogol", "Hell Hound"]], boss: { key: "demon", name: "The Demon", hp: 86, atk: 11, def: 4, gold: 100, special: "fire", move: "breathes fire", blurb: "Fire breath burns for extra damage unless you block it." } },
+  { name: "Grave Chapel", family: "Gravebound", minions: [["necro", "Acolyte"], ["doc", "Grave Doctor"], ["zombie0", "Risen Corpse"]], boss: { key: "nlord", name: "The Necromancer", hp: 92, atk: 12, def: 4, gold: 110, special: "raise", move: "raises the dead", blurb: "Raises the dead to mend himself. Interrupt the glow." } },
+  { name: "Ogre Den", family: "Brutes", minions: [["ogre", "Ogre"], ["golem", "Stone Brute"], ["orc2", "Ogre Tamer"]], boss: { key: "bogre", name: "Big Ogre", hp: 104, atk: 13, def: 5, gold: 120, special: "slam", move: "SLAMS the ground", blurb: "Ground slams hit hard and keep coming. Armor and potions." } },
+  { name: "The Rot", family: "Rotborn", minions: [["zombie", "Rot Walker"], ["zombie2", "Frost Ghoul"], ["bigzombie", "Plague Brute"]], boss: { key: "bzombie", name: "Big Zombie", hp: 116, atk: 14, def: 5, gold: 140, special: "grab", move: "GRABS you", blurb: "A grab drains your energy. Block, then strike back." } },
+  { name: "Frostbite Tundra", family: "Frostborn", minions: [["icezombie", "Ice Stalker"], ["angel", "Frost Wisp"], ["slug2", "Glacier Crawler"]], boss: { key: "frostboss", name: "The Frozen Titan", hp: 128, atk: 15, def: 6, gold: 155, special: "shell", move: "freezes behind an ice shell", blurb: "Its ice shell hardens its defence. Keep pressure on it and strike between freezes." } },
+  { name: "Sunken Catacombs", family: "Deep Ones", minions: [["swampbeast", "Drowned Lurker"], ["tiny_slug", "Cave Crawler"], ["lizard", "Sunken Sentinel"]], boss: { key: "deepboss", name: "The Drowned King", hp: 140, atk: 16, def: 6, gold: 170, special: "heal", move: "recovers lost health", blurb: "The Drowned King restores health when weakened. Keep dealing damage and do not waste turns." } },
+  { name: "The Haunted Carnival", family: "Cursed", minions: [["pumpkin", "Lantern Stalker"], ["jester", "Cursed Jester"], ["doc", "Hollow Ringmaster"]], boss: { key: "carnivalboss", name: "The Ringmaster", hp: 152, atk: 17, def: 7, gold: 185, special: "double", move: "unleashes a double strike", blurb: "The Ringmaster can strike twice. Defend when the wind-up starts." } },
+  { name: "Ashen Citadel", family: "Ashen Legion", minions: [["wogol", "Ash Hound"], ["orc3", "Ashen Warlock"], ["bigdemon", "Ember Fiend"]], boss: { key: "ashboss", name: "The Ashen Sovereign", hp: 168, atk: 18, def: 8, gold: 210, special: "mixed", move: "alternates heavy strikes, healing and hardening", blurb: "The final guardian mixes brutal attacks with recovery and defence. Bring upgraded gear." } }
 ];
 var MAX_LEVEL = LEVELS.length;
 var ONCHAIN_MAX_LEVEL = 6;
 function levelDungeon(L) {
   if (L < 1 || L > MAX_LEVEL) throw new Error("bad level");
   const lv = LEVELS[L - 1];
-  const rooms = lv.minions.map(([key, name], i) => ({ key, name, hp: 10 + 6 * L + 2 * i, atk: 2 + L + (i === 2 ? 1 : 0), def: Math.floor((L - 1) / 2) + (i === 2 && L >= 5 ? 1 : 0), gold: 6 + 3 * L + i }));
+  const rooms = lv.minions.map(([key, name], i) => ({
+    key,
+    name,
+    hp: 10 + 6 * L + 2 * i,
+    atk: 2 + L + (i === 2 ? 1 : 0),
+    def: Math.floor((L - 1) / 2) + (i === 2 && L >= 5 ? 1 : 0),
+    gold: 6 + 3 * L + i
+  }));
   const bossScale = Math.max(0, L - 8);
   rooms.push({ ...lv.boss, hp: lv.boss.hp + bossScale * 4, atk: lv.boss.atk + bossScale, def: lv.boss.def + Math.floor(bossScale / 2), gold: lv.boss.gold + bossScale * 5 });
   return rooms;
@@ -18902,7 +18907,7 @@ var seedOf = (m) => m.kind === "daily" ? m.day : m.kind === "event" ? 9e6 + (m.s
 function dungeonFor(day) {
   const r = mulberry(day * 7919 + 17);
   const rooms = [];
-  const unique = new Map();
+  const unique = /* @__PURE__ */ new Map();
   for (const level of LEVELS) for (const [key, name] of level.minions) if (!unique.has(key)) unique.set(key, { key, name });
   const pool = [...unique.values()];
   for (let i = pool.length - 1; i > 0; i--) {
@@ -18920,6 +18925,10 @@ function dungeonFor(day) {
       def: Math.floor(tier / 6),
       gold: 8 + tier * 2
     });
+  }
+  for (const i of DAILY_MINI) {
+    const e = rooms[i];
+    rooms[i] = { ...e, name: `Giant ${e.name}`, hp: Math.ceil(e.hp * 1.6), atk: e.atk + 2, def: e.def + 1, gold: e.gold + 10, mini: true };
   }
   rooms.push({ ...BOSS, hp: BOSS.hp + 28 + Math.floor(r() * 12), atk: BOSS.atk + 3, def: BOSS.def + 2, name: "The Daily Warden" });
   return rooms;
@@ -18990,6 +18999,10 @@ function step(s0, m) {
     s.kills++;
     s.gold += e.gold;
     s.log.push(`${e.name} falls. +${e.gold} gold.`);
+    if (e.mini) {
+      s.hp = s.maxHp;
+      s.log.push(`${e.name} drops a potion: HP fully restored.`);
+    }
     if (s.room === rooms.length - 1) {
       s.cleared = true;
       s.done = true;
@@ -19073,8 +19086,8 @@ var EP_COST = 25;
 var EP_PARRY = 15;
 var EP_POT = 40;
 var BASEMOVE = { split: "heal", raise: "heal", summon: "double", bone: "charge", charge: "charge", fire: "charge", slam: "charge", grab: "charge" };
-var killReward = (s) => isBoss(s) ? 100 : 30;
-var clearReward = (m) => m.kind === "level" ? 100 : m.kind === "event" ? 300 : 100;
+var killReward = (s) => s.mode.kind === "daily" ? isBoss(s) ? 50 : 10 : isBoss(s) ? 100 : 30;
+var clearReward = (m) => m.kind === "daily" ? 110 : m.kind === "level" ? 100 : 300;
 var canFinish = (s) => !s.done && (s.phase === "stagger" || s.enemyHp <= Math.ceil(foeMax(roomsFor(s.mode)[s.room].hp) * 0.15));
 var rnd = (s) => {
   let a = s.rs = s.rs + 1831565813 >>> 0;
@@ -19196,6 +19209,13 @@ function kill(s) {
   s.gold += e.gold;
   s.fx.push("kill");
   say(s, `${e.name} falls. +${e.gold} gold.`);
+  if (e.mini && !s.dead) {
+    const h = s.maxHp - s.hp;
+    s.hp = s.maxHp;
+    s.fx.push("potion");
+    s.nums.push({ w: "hero", v: h, txt: "FULL HP" });
+    say(s, `${e.name} drops a potion: HP fully restored.`);
+  }
   if (s.room === rooms.length - 1) {
     s.cleared = true;
     s.done = true;
@@ -19231,7 +19251,7 @@ function special(s) {
   if (W === 5 || W === 7) {
     s.ammo--;
     s.proj = W === 5 ? 14 : 10;
-    s.projDmg = W === 5 ? 3 * base + 10 : 2 * base + 4;
+    s.projDmg = W === 5 ? Math.ceil(3.2 * base) + 12 : 2 * base + 6;
     if (W === 7) {
       s.burnT = 100;
       s.burnDmg = 2;
@@ -19242,7 +19262,7 @@ function special(s) {
   }
   if (W === 4) {
     s.burnT = 100;
-    s.burnDmg = Math.max(2, Math.ceil(base / 3));
+    s.burnDmg = Math.max(2, Math.ceil(base / 2));
     say(s, `${e.name} catches fire!`);
     return wound(s, Math.max(1, base - def));
   }
@@ -19250,7 +19270,7 @@ function special(s) {
     say(s, "Dagger combo!");
     for (let i = 0; i < 3 && s.enemyHp > 0; i++) {
       const r = s.room;
-      wound(s, Math.max(1, Math.ceil(base * 0.55) - Math.floor(def / 2)));
+      wound(s, Math.max(1, Math.ceil(base * 0.65) - Math.floor(def / 2)));
       if (s.room !== r || s.done) return;
     }
     return;
@@ -19258,7 +19278,7 @@ function special(s) {
   if (W === 6) {
     say(s, "Hammer smash: stunned!");
     s.fx.push("stun");
-    wound(s, Math.max(1, Math.ceil(base * 1.7) - def));
+    wound(s, Math.max(1, Math.ceil(base * 1.9) - def));
     if (!s.done && s.enemyHp > 0) {
       s.phase = "stagger";
       s.pt = 0;
@@ -19269,16 +19289,16 @@ function special(s) {
   if (W === 2) {
     say(s, "Spear thrust!");
     const was = s.phase === "wind";
-    wound(s, Math.max(1, Math.ceil(base * 1.2) - def));
+    wound(s, Math.max(1, Math.ceil(base * 1.4) - def));
     if (was && !s.done && s.enemyHp > 0 && s.kind !== "heavy") resetFoe(s, false);
     return;
   }
   if (W === 1) {
     say(s, "Arrow!");
-    return wound(s, Math.max(1, base - Math.floor(def / 2)));
+    return wound(s, Math.max(1, Math.ceil(base * 1.25) - Math.floor(def / 2)));
   }
   say(s, "Wide slash!");
-  wound(s, Math.max(1, Math.ceil(base * 1.15) - def));
+  wound(s, Math.max(1, Math.ceil(base * 1.3) - def));
 }
 function finisher(s) {
   const e = roomsFor(s.mode)[s.room], max = foeMax(e.hp);
@@ -19508,6 +19528,8 @@ async function signRun(body) {
   body.day = Number(body.day);
   const today = Number(await p.readContract({ address: D.game, abi: gameAbi, functionName: "today" }));
   if (body.day !== today) throw new Error("wrong day");
+  const lastRunDay = Number(await p.readContract({ address: D.game, abi: gameAbi, functionName: "lastRunDay", args: [player] }));
+  if (lastRunDay === today) throw new Error("daily challenge already played today");
   const r = body.events ? rtReplay({ kind: "daily", day: body.day }, body.loadout, body.events, g, arms.w, arms.ammo) : replay(body.day, body.loadout, body.moves || [], g);
   const nonce = await p.readContract({ address: D.game, abi: gameAbi, functionName: "nonces", args: [player] });
   const deadline = BigInt(Math.floor(Date.now() / 1e3) + 600);
@@ -19523,7 +19545,7 @@ async function signRun(body) {
 }
 var DEAD = getAddress("0x000000000000000000000000000000000000dEaD");
 
-// api/run.ts
+// server-entries/run.ts
 async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   try {

@@ -153,23 +153,28 @@ export default function World({ map, defeated, locked, paused, onInteract, onTou
         if (ch === 'j') { drawJack(g, X, Y, now); lights.push([(X / TS) - ox + 0.5, (Y / TS) - oy + 0.6, 1.8]) }
         if (ch === 'n') { drawCandle(g, X, Y, now); lights.push([(X / TS) - ox + 0.5, (Y / TS) - oy + 0.2, 2.3]) }
       }
-      const actors: { key: string; x: number; y: number; moving: boolean; scale?: number; boss?: boolean; stall?: Npc }[] = []
+      const actors: { key: string; x: number; y: number; moving: boolean; scale?: number; boss?: boolean; mini?: boolean; stall?: Npc }[] = []
       if (town) {
         const gate = map.npcs.find((n) => n.kind === 'gate')
         if (gate) drawCastle(g, Math.round((gate.x + ox) * TS), Math.round((gate.y + oy) * TS), now)
       }
       for (const n of map.npcs) { if (town && n.kind === 'gate') continue; actors.push({ key: n.sprite, x: n.x, y: n.y, moving: false })
         if (n.stall) { drawStallBack(g, Math.round((n.x + ox) * TS), Math.round((n.y + oy) * TS), n.stall, now); actors.push({ key: '', x: n.x, y: n.y + 0.6, moving: false, stall: n }) } }
-      for (const f of s.foes) if (alive(f.idx)) actors.push({ key: f.sprite, x: f.fx + (f.x - f.fx) * f.t, y: f.fy + (f.y - f.fy) * f.t, moving: f.t < 1, boss: f.boss })
+      for (const f of s.foes) if (alive(f.idx)) actors.push({ key: f.sprite, x: f.fx + (f.x - f.fx) * f.t, y: f.fy + (f.y - f.fy) * f.t, moving: f.t < 1, boss: f.boss, mini: f.mini })
       actors.push({ key: 'hero', x: px, y: py, moving: s.t < 1 || !!held.current })
       actors.sort((a, b) => a.y - b.y)
       for (const a of actors) {
         if (a.stall) { drawStallFront(g, Math.round((a.stall.x + ox) * TS), Math.round((a.stall.y + oy) * TS), a.stall, now); continue }
-        const fr = frameOf(a.key, now + a.x * 97, a.moving); const w = fr.w * fr.scale, h = fr.h * fr.scale
+        const fr = frameOf(a.key, now + a.x * 97, a.moving); const big = a.mini ? 1.6 : 1; const w = fr.w * fr.scale * big, h = fr.h * fr.scale * big
         const X = Math.round((a.x + ox) * TS + (TS - w) / 2), Y = Math.round((a.y + oy) * TS + TS - h)
         if (a.boss) { // boss aura: a pulsing glow behind the big version of the level's family
           const cx = X + w / 2, cy = Y + h * 0.6, rr = Math.max(w, h) * (0.62 + 0.06 * Math.sin(now / 220))
           const gr = g.createRadialGradient(cx, cy, 2, cx, cy, rr); gr.addColorStop(0, 'rgba(255,70,40,.45)'); gr.addColorStop(1, 'rgba(255,70,40,0)')
+          g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, rr, 0, 7); g.fill()
+        }
+        if (a.mini) { // mini-boss aura: violet pulse, it drops a full-heal potion
+          const cx = X + w / 2, cy = Y + h * 0.6, rr = Math.max(w, h) * (0.58 + 0.05 * Math.sin(now / 200))
+          const gr = g.createRadialGradient(cx, cy, 2, cx, cy, rr); gr.addColorStop(0, 'rgba(170,90,255,.42)'); gr.addColorStop(1, 'rgba(170,90,255,0)')
           g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, rr, 0, 7); g.fill()
         }
         g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.ellipse(X + w / 2, Math.round((a.y + oy) * TS) + TS - 1, w / 3, 2, 0, 0, 7); g.fill()

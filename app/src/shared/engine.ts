@@ -8,7 +8,9 @@ export const ITEMS: Record<ItemId, { name: string; blurb: string }> = {
   4: { name: 'Energy Potion', blurb: 'Drink any time: +40 EP for weapon specials. Unused ones are kept.' },
 }
 export type Special = 'charge' | 'heal' | 'shell' | 'double' | 'mixed' | 'split' | 'summon' | 'bone' | 'fire' | 'raise' | 'slam' | 'grab'
-export interface EnemyDef { key: string; name: string; hp: number; atk: number; def: number; gold: number; special?: Special; blurb?: string; move?: string }
+export interface EnemyDef { key: string; name: string; hp: number; atk: number; def: number; gold: number; special?: Special; blurb?: string; move?: string; mini?: boolean }
+/** daily gauntlet: the 5th and 10th fights are bigger, stronger mini-bosses that drop a full-heal potion */
+export const DAILY_MINI = [4, 9]
 const BOSS: EnemyDef = { key: 'boss', name: 'The Edge Warden', hp: 44, atk: 8, def: 2, gold: 60 }
 export const ROOMS = 15
 export const MAX_TURNS = 240
@@ -95,6 +97,8 @@ export function dungeonFor(day: number): EnemyDef[] {
       gold: 8 + tier * 2,
     })
   }
+  // mini-bosses: applied after the seeded rolls so the day's random sequence is unchanged
+  for (const i of DAILY_MINI) { const e = rooms[i]; rooms[i] = { ...e, name: `Giant ${e.name}`, hp: Math.ceil(e.hp * 1.6), atk: e.atk + 2, def: e.def + 1, gold: e.gold + 10, mini: true } }
   rooms.push({ ...BOSS, hp: BOSS.hp + 28 + Math.floor(r() * 12), atk: BOSS.atk + 3, def: BOSS.def + 2, name: 'The Daily Warden' })
   return rooms
 }
@@ -138,6 +142,7 @@ export function step(s0: RunState, m: Move): RunState {
   }
   if (s.enemyHp <= 0) {
     s.kills++; s.gold += e.gold; s.log.push(`${e.name} falls. +${e.gold} gold.`)
+    if (e.mini) { s.hp = s.maxHp; s.log.push(`${e.name} drops a potion: HP fully restored.`) }
     if (s.room === rooms.length - 1) { s.cleared = true; s.done = true; s.log.push('The Depths are cleared!') }
     else { s.room++; s.enemyHp = rooms[s.room].hp; s.log.push(`Room ${s.room + 1}: ${rooms[s.room].name}.`) }
     s.charging = false

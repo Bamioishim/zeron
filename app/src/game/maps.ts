@@ -2,7 +2,7 @@
 export const TS = 16
 export type Kind = 'market' | 'forge' | 'arena' | 'board' | 'names' | 'gate' | 'talk'
 export interface Npc { kind: Kind; sprite: string; label: string; x: number; y: number; stall?: string; line?: string }
-export interface Foe { idx: number; sprite: string; x: number; y: number; room: [number, number, number, number]; boss: boolean }
+export interface Foe { idx: number; sprite: string; x: number; y: number; room: [number, number, number, number]; boss: boolean; mini?: boolean }
 export interface MapDef { theme: 'town' | 'dungeon'; w: number; h: number; tiles: string[][]; start: { x: number; y: number }; npcs: Npc[]; foes: Foe[]; lock?: { x: number; y: number } }
 
 // Market town: stalls are generated around each keeper (awning row above, shelves beside, counter in front).
@@ -46,7 +46,7 @@ export function townMap(): MapDef {
 function rng(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296 } }
 
 /** start room + one room per enemy; the last enemy is the boss, behind a gate that opens when the minions are down */
-export function dungeonMap(seed: number, sprites: string[]): MapDef {
+export function dungeonMap(seed: number, sprites: string[], minis: number[] = []): MapDef {
   const r = rng(seed * 31 + 7)
   const H = 15, rooms: [number, number, number, number][] = []
   let x = 1
@@ -74,7 +74,7 @@ export function dungeonMap(seed: number, sprites: string[]): MapDef {
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const c = t[yy + dy]?.[xx + dx]; if (c === '.' || c === 'X') { t[yy][xx] = '#'; dy = 2; break } }
   }
   const s = rooms[0]
-  const foes: Foe[] = sprites.map((sp, i) => { const rm = rooms[i + 1]; return { idx: i, sprite: sp, boss: i === sprites.length - 1,
+  const foes: Foe[] = sprites.map((sp, i) => { const rm = rooms[i + 1]; return { idx: i, sprite: sp, boss: i === sprites.length - 1, mini: minis.includes(i),
     x: Math.floor((rm[0] + rm[2]) / 2) + (i === sprites.length - 1 ? 0 : 1), y: Math.floor((rm[1] + rm[3]) / 2), room: rm } })
   // torches + banners on the back wall, props in room corners (corridors enter mid-height, so corners never block)
   const PROPS = ['c', 'h', 'o', 'k', 'g', 'c', 'k']
