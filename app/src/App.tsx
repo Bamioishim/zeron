@@ -531,7 +531,6 @@ export default function App() {
       <header className="top">
         <div className="brand" onClick={() => setOpened(false)} title="Title screen"><Svg src={ICON} className="hd-icon" /><div><Svg src={WORDMARK} className="hd-word" /><div className="sub">a daily dungeon powered by $wif</div></div><MuteBtn /></div>
         <div className="wallet">
-          <MenuButton onSelect={setMenuView} />
           <button className="chip namechip" title={me} onClick={() => setNamePrompt(m.name ? '' : 'Pick your @name')}><Pix k={'c' + (m.wardrobe?.eq ?? 0)} size={18} />{m.name ? '@' + m.name : m.name === '' ? 'claim @name' : '…'}</button>
           <div className="chip lime"><Sprite name="coin" size={14} /> {fmt(m.wif)} WIF</div>
           <button className="chip burnchip" onClick={() => setTab('burn')} title="Total WIF destroyed by FeeSink contracts, read on-chain">🔥 {fmt(d.burnedAll)} destroyed</button>
