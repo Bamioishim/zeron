@@ -223,10 +223,10 @@ function MuteBtn() {
 export const _CREDITS = <>art: CC0 "DungeonTileset II" by 0x72 + original sprites · music: "Cave Theme" by Brandon Morris (CC0) and "Dungeon Ambience" by yd (CC0) · sfx: "512 Sound Effects (8-bit)" by Juhani Junkala (CC0), all via OpenGameArt</>
 
 type MenuView = 'stats' | 'profile'
-function MenuButton({ onSelect }: { onSelect: (view: MenuView) => void }) {
+function MenuButton({ onSelect, showStats = true }: { onSelect: (view: MenuView) => void; showStats?: boolean }) {
   return <div className="menu-wrap" aria-label="Account menu">
     <button className="menu-profile-btn" onClick={() => onSelect('profile')}>Profile</button>
-    <button className="menu-stats-btn" onClick={() => onSelect('stats')}>Stats</button>
+    {showStats && <button className="menu-stats-btn" onClick={() => onSelect('stats')}>Stats</button>}
   </div>
 }
 function StatsPanel({ stats }: { stats: { burned?: bigint | null; players?: number | null; clears?: number | null } }) {
@@ -334,7 +334,7 @@ function Opening({ onEnter, onLogin, onMenuView, me }: { onEnter: (t?: Tab) => v
       <div className="opening-bg" aria-hidden><World map={map} defeated={0} locked={false} paused={false} onInteract={() => {}} onTouchFoe={() => {}} apiRef={api} prompt={() => {}} /></div>
       <div className="opening-veil" />
       <div className="opening-fg">
-        <div className="opening-actions"><MenuButton onSelect={onMenuView} /><MuteBtn /></div>
+        <div className="opening-actions"><MenuButton onSelect={onMenuView} showStats={false} /><MuteBtn /></div>
         {HALLOWEEN && <button className="hw-banner" onClick={() => onEnter('world')}>🎃 <b>Halloween event:</b> the Pumpkin King haunts the Gate. Beat him for a drop-only crown.</button>}
         <Svg src={ICON} className="op-icon" />
         <Svg src={WORDMARK} className="op-word" />
