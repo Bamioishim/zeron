@@ -886,7 +886,7 @@ function Game({ me, player, d, day, setTab, nudge, busy, act, approveIfNeeded, s
           {mode.kind === 'daily' ? <div>{scoreOf(run).score} pts · +{scoreOf(run).xp} XP · {run.kills} kills · {run.gold} gold</div>
             : mode.kind === 'event' ? <div>The Pumpkin King is smashed! Claim his crown and his Pumpkin Launcher (free).</div>
             : <div className="loot">Boss down! Loot: {(() => { const l = lootFor(mode.level); return `${l.iron} iron, ${l.hide} hide${l.glow ? `, ${l.glow} glow` : ''}` })()}</div>}
-          {run.earned > 0 && <div className="earn">+{rewardAmount(run.earned)} WIF earned this run <span className="fine dim">(paid from the funded Armory pool when you save · {fmt(d.dailyCap)} WIF daily cap per wallet)</span></div>}
+          {run.earned > 0 && <div className="earn">+{rewardAmount(run.earned)} WIF earned this run <span className="fine dim">(paid from the Armory reward pool when you save · {fmt(d.dailyCap)} WIF daily cap per wallet)</span></div>}
           {bgSave && <p className="fine limet">{bgSave}</p>}
           <div className="row">
             {mode.kind === 'level' && run.cleared && mode.level < MAX_LEVEL && <button className="btn lime" onClick={nextLevel} disabled={savingCheckpoint || !!busy}>{savingCheckpoint ? "Saving checkpoint…" : "Next level ▶"} <span className="fine">(saves L{mode.level} first)</span></button>}
@@ -1038,7 +1038,7 @@ function RunStart({ me, d, day, dailyAttempted, busy, act, approveIfNeeded, load
             <button key={i} className={'item ' + (count(i) ? 'sel' : '')} onClick={() => toggle(i)} disabled={!(inv[i] > 0)}>
               <Sprite name={{ 1: 'potion', 2: 'whet', 3: 'ward', 4: 'potion' }[i]!} size={26} /><div><b>{ITEMS[i].name}</b> <span className="dim">×{inv[i] || 0}{count(i) ? ` · taking ${count(i)}` : ''}</span></div>
             </button>))}
-          <p className="fine">15 enemies (14 unique types + the Daily Warden). <b className="limet">Fights 5 and 10 are giant mini-bosses</b>: tougher, but each drops a potion that restores your HP to full. One ranked attempt per day · up to <b className="limet">30 WIF</b> for a full clear when reward signing is configured and the Armory pool has funds. Starting the attempt locks it for today. Ranked entry fees separately fund the leaderboard prize pool.</p>
+          <p className="fine">15 enemies (14 unique types + the Daily Warden). <b className="limet">Fights 5 and 10 are giant mini-bosses</b>: tougher, but each drops a potion that restores your HP to full. One ranked attempt per day · kills and the clear earn WIF from the Armory reward pool, up to <b className="limet">{fmt(d.dailyCap)} WIF</b> per wallet per day while the pool has payout room. Starting the attempt locks it for today. Ranked entry fees separately fund the leaderboard prize pool.</p>
           <div className="row">
             {me.playedToday ? <button className="btn lime" disabled>✓ Today's challenge completed</button>
               : dailyAttempted ? <button className="btn lime" disabled>✓ Today's attempt already used</button>
@@ -1085,7 +1085,7 @@ function ShopPanel({ me, d, busy, act, approveIfNeeded, initTab }: any) {
             : w.price <= 0 ? <div className="fine dim">Not for sale: beat the Pumpkin King in the Halloween event.</div>
               : <button className="btn lime sm" disabled={!!busy || !A} onClick={() => buyW(w)}>{busy === 'w' + w.id ? '…' : 'Buy'}</button>}
         </div>)}</div>
-        <p className="fine">Weapon buys: 50% of the price is sent to the dead address; 50% goes to the treasury. Boss damage is capped per hit, so no weapon one-shots a boss.</p>
+        <p className="fine">Weapon and ammo buys: 50% of the price is sent to the dead address; 50% stays in the Armory reward pool. Boss damage is capped per hit, so no weapon one-shots a boss.</p>
       </>}
       {tab === 'items' && <div className="grid3">
         {([1, 2, 3, 4] as ItemId[]).map((i) => (
@@ -1160,8 +1160,8 @@ function Board({ d, board, me, day, busy, act, reload, heroes, burns, reloadBurn
       <div className="card">
         <div className="eyebrow">Rewards (what is real today)</div>
         <ul className="rewards">
-          <li><b>Daily pool:</b> the top ranked score takes the whole pool ({fmt(d.pool)} WIF now) when the day is settled. Empty days roll over.</li>
-          <li><b>Play to earn:</b> +{rewardAmount(3)} WIF per small enemy, +{rewardAmount(10)} WIF per boss, and +{rewardAmount(10)} WIF per level clear at the current mainnet reward scale. Paid from the prefunded Armory pool (not minted), up to {fmt(d.dailyCap)} WIF per wallet per day and only while funds remain.</li>
+          <li><b>Daily pool:</b> the top 3 ranked scores split the pool 50% / 30% / 20% ({fmt(d.pool)} WIF now) when the day is settled. Empty seats roll over.</li>
+          <li><b>Play to earn:</b> +{rewardAmount(3)} WIF per small enemy, +{rewardAmount(10)} WIF per boss, and +{rewardAmount(10)} WIF per level clear at the current mainnet reward scale. Paid from the Armory reward pool (not minted; seeded by the team and refilled by 50% of weapon and ammo buys). Payouts are capped at {fmt(d.dailyCap)} WIF per wallet per day and at 65% of the last 24h purchase inflows, and only while funds remain.</li>
           <li><b>PvP:</b> the winner takes 90% of the stake; 10% is sent to the dead address.</li>
           <li><b>🎃 Pumpkin King:</b> drops his Crown costume and the Pumpkin Launcher.</li>
         </ul>
@@ -1239,10 +1239,10 @@ function How({ d }: any) {
         <li><b>Log in anywhere.</b> Returning players can choose Log in from the title screen and restore their wallet with @name + PIN. PIN login does not submit a transaction or require the relayer.</li>
         <li><b>Free play every day.</b> One hand-seeded dungeon per day, the same for everyone. Free runs earn XP and keep your streak.</li>
         <li><b>$wif does the work:</b> ranked entry ({fmt(d.fee)} WIF), the shop (potions, whetstones, wards), and on-chain transfers to friends resolved through off-chain @names.</li>
-        <li><b>Fees.</b> The deployed FeeSink contracts transfer configured fee shares to the dead address. They do not call the token's native supply-reduction function. Current shares: Game, Shop and Armory 50%; Quest and PvP stake 10%. Username registration is off-chain. The remainder goes to the relevant prize pool, contract balance or treasury, depending on the action.</li>
-        <li><b>Ranked prize loop.</b> 80% of ranked-entry and daily-item fees enter that day's Game prize pool. After the day ends, anyone can settle it and the top ranked player receives the pool. If nobody qualifies, it rolls into the current day. This is separate from the Armory's prefunded kill/level reward balance.</li>
+        <li><b>Fees.</b> The deployed FeeSink contracts transfer configured fee shares to the dead address. They do not call the token's native supply-reduction function. Current shares: Game (ranked entry, daily items) and Quest (forge) 20%; Shop and Armory 50%; PvP stake 10%. Username registration is off-chain. The remainder goes to the ranked prize pool (Game, Quest), the Armory reward pool (Armory), the winner (PvP) or the treasury (Shop).</li>
+        <li><b>Ranked prize loop.</b> 80% of ranked-entry and daily-item fees enter that day's Game prize pool. After the day ends, anyone can settle it and the top 3 ranked players are paid 50% / 30% / 20%. Empty seats roll into the current day. This is separate from the Armory's kill/level reward pool.</li>
         <li><b>Campaign.</b> Twelve levels, each with three enemy types, rising difficulty and a distinct boss with a special move. Clear each boss to record a checkpoint and unlock the next level.</li>
-        <li><b>Forge.</b> Turn iron, hide and glow into a Sword (+ATK), Armor (+DEF) or Charm (+HP), up to tier 3. Each craft costs {fmt(d.craftFee)} WIF per tier: 20% is sent to the dead address; the rest is retained or routed by the Quest contract. Gear counts in every run and in PvP.</li>
+        <li><b>Forge.</b> Turn iron, hide and glow into a Sword (+ATK), Armor (+DEF) or Charm (+HP), up to tier 3. Each craft costs {fmt(d.craftFee)} WIF per tier: 20% is sent to the dead address; the rest goes to today's ranked prize pool. Gear counts in every run and in PvP.</li>
         <li><b>Arena.</b> Register your fighter after clearing level 1, then challenge players or the six NPCs. Each challenge stakes {fmt(d.pvpStake)} WIF. Win and you get 90% back; lose and the defender (or the prize pool, for NPCs) gets 90%. 10% of the stake is sent to the dead address. Defending is free. Your stake locks first; then our server signs the duel and its signature becomes the seed, so the outcome can't be predicted or rerolled. If a duel is ever stuck for an hour, you can take your stake back.</li>
         <li><b>Score verification.</b> Runs are deterministic. The server replays your exact moves before signing a score, and the contract accepts each signature only once. This is a practical anti-cheat step because the browser cannot simply submit an arbitrary score, but it still trusts the replay service and signer. Planned upgrades: publish replay inputs, enable independent replay checks, add a dispute window, and make reward claims independently verifiable.</li>
       </ol>
