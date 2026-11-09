@@ -23,8 +23,9 @@ export const EP_MAX = 100, EP_COST = 25, EP_PARRY = 15, EP_POT = 40
 /** boss specials -> the attack pattern they use */
 const BASEMOVE: Record<string, string> = { split: 'heal', raise: 'heal', summon: 'double', bone: 'charge', charge: 'charge', fire: 'charge', slam: 'charge', grab: 'charge' }
 /** WIF earned in mainnet reward units (10 units = 1 WIF): +3 per small enemy, +10 per boss, +10 per level clear. */
-export const killReward = (s: RT) => (isBoss(s) ? 100 : 30)
-export const clearReward = (m: Mode) => (m.kind === 'level' ? 100 : m.kind === 'event' ? 300 : 100)
+export const killReward = (s: RT) => s.mode.kind === 'daily' ? (isBoss(s) ? 50 : 10) : (isBoss(s) ? 100 : 30)
+// Daily gauntlet: 14 minions (1 WIF each) + Warden (5 WIF) + clear bonus (11 WIF) = 30 WIF.
+export const clearReward = (m: Mode) => (m.kind === 'daily' ? 110 : m.kind === 'level' ? 100 : 300)
 export const canFinish = (s: RT) => !s.done && (s.phase === 'stagger' || s.enemyHp <= Math.ceil(foeMax(roomsFor(s.mode)[s.room].hp) * 0.15))
 export interface Ev { r: number; t: number; m: Move }
 const rnd = (s: RT) => { let a = (s.rs = (s.rs + 0x6d2b79f5) >>> 0); a = Math.imul(a ^ (a >>> 15), a | 1); a ^= a + Math.imul(a ^ (a >>> 7), a | 61); return ((a ^ (a >>> 14)) >>> 0) / 4294967296 }
@@ -101,13 +102,13 @@ function special(s: RT) {
   const e = roomsFor(s.mode)[s.room], def = e.def + (isBoss(s) ? s.bossDef : 0), base = s.atk + 1
   s.wcd = WCD[s.weapon] ?? 60; s.fx.push('special')
   const W = s.weapon
-  if (W === 5 || W === 7) { s.ammo--; s.proj = W === 5 ? 14 : 10; s.projDmg = W === 5 ? 3 * base + 10 : 2 * base + 4; if (W === 7) { s.burnT = 100; s.burnDmg = 2 }; say(s, W === 5 ? 'Rocket away!' : 'Pumpkin lobbed!'); return }
-  if (W === 4) { s.burnT = 100; s.burnDmg = Math.max(2, Math.ceil(base / 3)); say(s, `${e.name} catches fire!`); return wound(s, Math.max(1, base - def)) }
-  if (W === 3) { say(s, 'Dagger combo!'); for (let i = 0; i < 3 && s.enemyHp > 0; i++) { const r = s.room; wound(s, Math.max(1, Math.ceil(base * 0.55) - Math.floor(def / 2))); if (s.room !== r || s.done) return } return }
-  if (W === 6) { say(s, 'Hammer smash: stunned!'); s.fx.push('stun'); wound(s, Math.max(1, Math.ceil(base * 1.7) - def)); if (!s.done && s.enemyHp > 0) { s.phase = 'stagger'; s.pt = 0; s.plen = 20 } return }
-  if (W === 2) { say(s, 'Spear thrust!'); const was = s.phase === 'wind'; wound(s, Math.max(1, Math.ceil(base * 1.2) - def)); if (was && !s.done && s.enemyHp > 0 && s.kind !== 'heavy') resetFoe(s, false); return }
-  if (W === 1) { say(s, 'Arrow!'); return wound(s, Math.max(1, base - Math.floor(def / 2))) }
-  say(s, 'Wide slash!'); wound(s, Math.max(1, Math.ceil(base * 1.15) - def))
+  if (W === 5 || W === 7) { s.ammo--; s.proj = W === 5 ? 14 : 10; s.projDmg = W === 5 ? Math.ceil(3.2 * base) + 12 : 2 * base + 6; if (W === 7) { s.burnT = 100; s.burnDmg = 2 }; say(s, W === 5 ? 'Rocket away!' : 'Pumpkin lobbed!'); return }
+  if (W === 4) { s.burnT = 100; s.burnDmg = Math.max(2, Math.ceil(base / 2)); say(s, `${e.name} catches fire!`); return wound(s, Math.max(1, base - def)) }
+  if (W === 3) { say(s, 'Dagger combo!'); for (let i = 0; i < 3 && s.enemyHp > 0; i++) { const r = s.room; wound(s, Math.max(1, Math.ceil(base * 0.65) - Math.floor(def / 2))); if (s.room !== r || s.done) return } return }
+  if (W === 6) { say(s, 'Hammer smash: stunned!'); s.fx.push('stun'); wound(s, Math.max(1, Math.ceil(base * 1.9) - def)); if (!s.done && s.enemyHp > 0) { s.phase = 'stagger'; s.pt = 0; s.plen = 20 } return }
+  if (W === 2) { say(s, 'Spear thrust!'); const was = s.phase === 'wind'; wound(s, Math.max(1, Math.ceil(base * 1.4) - def)); if (was && !s.done && s.enemyHp > 0 && s.kind !== 'heavy') resetFoe(s, false); return }
+  if (W === 1) { say(s, 'Arrow!'); return wound(s, Math.max(1, Math.ceil(base * 1.25) - Math.floor(def / 2))) }
+  say(s, 'Wide slash!'); wound(s, Math.max(1, Math.ceil(base * 1.3) - def))
 }
 function finisher(s: RT) {
   const e = roomsFor(s.mode)[s.room], max = foeMax(e.hp)

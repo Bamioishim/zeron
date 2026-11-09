@@ -23,6 +23,22 @@ async function api(body: any) {
   return j
 }
 export const hasPin = async (name: string) => !!(await api({ op: 'salt', name })).exists
+/** Claim a username in the off-chain registry after proving wallet ownership with a signed message. */
+export async function claimName(name: string) {
+  const acct = privateKeyToAccount(getKey())
+  const ts = Date.now()
+  const message = `Zeron: claim username\nname: @${name}\naddress: ${acct.address}\ntime: ${ts}`
+  const sig = await acct.signMessage({ message })
+  await api({ op: 'claim', name, addr: acct.address, ts, sig })
+}
+export async function lookupName(name: string): Promise<string> {
+  const r = await api({ op: 'lookup', name })
+  return String(r.addr || '0x0000000000000000000000000000000000000000')
+}
+export async function nameForAddress(addr: string): Promise<string> {
+  const r = await api({ op: 'walletName', addr })
+  return String(r.name || '')
+}
 export const RECOVERY_QUESTIONS = ['What is your best color?', "What was your first pet's name?", 'What city were you born in?']
 const answer = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
 async function encryptedKey(name: string, secret: string, salt: string, kind: string) {

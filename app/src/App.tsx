@@ -1,14 +1,15 @@
 import { getAddress } from 'viem'
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { encodeFunctionData, formatEther, parseEther, maxUint256, parseEventLogs, keccak256, encodeAbiParameters, type Hex } from 'viem'
 import { D, deployed, wifAbi, gameAbi, namesAbi, questAbi, questXAbi, shopAbi, armoryAbi, type Call } from './shared/chain'
 import { rtStart, rtTick, rtDrink, EP_COST, tempo, foeMax, TICK, canFinish, WCD, AMMO_W, type RT, type Ev, type Fx } from './shared/rt'
 import { HALLOWEEN, COSTUMES, WEAPONS } from './config'
 import { setCostume } from './game/art'
-import { totalBurned, homeStats, recentBurns, wardrobeOf, shopPrices, burnedIn, arsenalOf, type BurnRow } from './onchain'
+import { totalBurned, homeStats, recentBurns, wardrobeOf, shopPrices, arsenalOf, type BurnRow } from './onchain'
 import { ITEMS, scoreOf, dayNow, roomsFor, LEVELS, MAX_LEVEL, ONCHAIN_MAX_LEVEL, LEVEL_KIT, RECIPES, lootFor, statsFor, type ItemId, type Move, type Mode, type EnemyDef } from './shared/engine'
 import { account, pub, sponsored, postRun, getKey, isFreeOnboarding } from './wallet'
-import { hasPin, setPin, loginPin, resetPin, pinRe, RECOVERY_QUESTIONS } from './pin'
+import { hasPin, setPin, loginPin, resetPin, pinRe, RECOVERY_QUESTIONS, claimName, lookupName, nameForAddress } from './pin'
 import { Sprite } from './sprites'
 import World, { type WorldApi } from './game/World'
 import { townMap, dungeonMap, type Npc, type MapDef } from './game/maps'
@@ -28,22 +29,27 @@ export function friendly(e: any): string {
   const MAP: [RegExp, string][] = [
     [/name: unknown/i, 'No player with that @name yet. Check the spelling.'],
     [/name: taken/i, 'That @name is already taken — try another.'],
-    [/no gas wif/i, "You need 0.2 WIF for gas on this move. Claim your welcome gift at the Market first."],
+    [/no gas wif/i, "You need 0.2 WIF for this sponsored move. Earn WIF in the dungeon or receive WIF from another player."],
     [/name: invalid/i, 'Names are 3–15 characters: a–z, 0–9 and _.'],
     [/name: self/i, "That's you. Pick a friend's @name."],
     [/name: already/i, 'You already have an @name.'],
-    [/insufficient|exceeds balance|transferFrom|ERC20/i, "You don't have enough WIF for that. Claim your welcome gift at the Market, earn some in the dungeon, or get $wif sent to your @name."],
+    [/insufficient|exceeds balance|transferFrom|ERC20/i, "You don't have enough WIF for that. Earn some in the dungeon or get $WIF sent to your @name."],
     [/allowance/i, 'WIF approval missing. Try again.'],
+    [/daily challenge already played/i, "You've already used today's Daily Challenge. Come back after the daily reset."],
     [/already entered|entered/i, "You've already entered today's ranked run."],
     [/used|nonce/i, 'That result was already recorded.'],
     [/expired|deadline/i, 'That took too long. Try again.'],
-    [/sig/i, "The server couldn't verify that. Try again."],
+    // Keep configuration errors ahead of the broad signature matcher ("signer" contains "sig").
+    [/RELAYER_KEY not set|relayer key.*not set|relayer.*private key/i, "Sponsored actions are unavailable because the server relayer key is missing. No transaction was sent."],
+    [/RUN_SIGNER_KEY not set/i, "Reward signing is not configured on Zeron's server. No reward transaction was sent."],
     [/level|locked/i, 'Clear the previous level first.'],
     [/material|iron|hide|glow/i, 'Not enough materials for that.'],
     [/tier|max/i, "That's already at max tier."],
     [/registered|fighter/i, 'Register in the arena first (clear level 1).'],
     [/pending|challenge/i, 'You already have a duel in progress. Wait a moment.'],
     [/daily limit|sponsored|quota/i, "You've hit today's free-gas limit. Come back tomorrow."],
+    [/sig/i, "The server couldn't verify that. Try again."],
+    [/BLOB_READ_WRITE_TOKEN|persistent PIN storage/i, "PIN storage is not configured. Your PIN was not saved. Contact the Zeron team."],
     [/fetch|network|timeout/i, "Can't reach the network right now. Try again."],
   ]
   for (const [re, m] of MAP) if (re.test(r)) return m
@@ -61,7 +67,7 @@ function useNameLookup(n: string) {
     if (!nameRe.test(n)) { setSt({ n, loading: false }); return }
     setSt({ n, loading: true }); let live = true
     const t = setTimeout(async () => {
-      const o = await pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }).catch(() => undefined) as string | undefined
+      const o = await lookupName(n).catch(() => undefined)
       if (live) setSt({ n, owner: o, loading: false })
     }, 300)
     return () => { live = false; clearTimeout(t) }
@@ -128,15 +134,15 @@ function SetPin({ name, onDone, onSkip, title }: { name: string; onDone: () => v
   )
 }
 /** onboarding / rename: pick an @name with a live availability check, then a PIN */
-function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: any) {
+function NamePick({ me, busy, onSkip, onDone, nudge, startLogin }: any) {
   const [name, setName] = useState('')
   const [pin, setP] = useState(''), [pin2, setP2] = useState(''), [question, setQuestion] = useState(RECOVERY_QUESTIONS[0]), [answer, setAnswer] = useState('')
-  const [login, setLogin] = useState(false)
-  const [done, setDone] = useState<{ name: string; link: string; pinErr?: string } | null>(null)
+  const [login, setLogin] = useState(!!startLogin)
+  const [done, setDone] = useState<{ name: string; pinErr?: string } | null>(null)
   const [err, setErr] = useState('')
   const [taken, setTaken] = useState<string[]>([])
+  const [savingName, setSavingName] = useState(false)
   const L = useNameLookup(name)
-  const fee: bigint = me.name ? (d.nameFee ?? 0n) : 0n
   const isTaken = taken.includes(name) || (L.n === name && !L.loading && !!L.owner && L.owner !== ZERO)
   const free = nameRe.test(name) && !L.loading && L.n === name && L.owner === ZERO && !taken.includes(name)
   const pinOk = pinRe.test(pin) && pin === pin2 && answer.trim().length >= 2
@@ -145,20 +151,18 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: 
   if (login) return <PinLogin onBack={() => setLogin(false)} />
   const claim = async (e?: any) => {
     e?.preventDefault?.(); e?.stopPropagation?.(); setErr('')
-    if (!ok) return
+    if (!ok || savingName) return
     const n = name, p = pin
-    const gift = !me.name && D.shop && me.wardrobe && !me.wardrobe.starterUsed ? [tx(D.shop!, shopAbi, 'starter')] : []
-    let r: any = null
-    try { r = await act('claim', [...gift, ...(fee > 0n ? approveIfNeeded('N', fee) : []), tx(D.names, namesAbi, 'claim', [n])], me.name ? `You're now @${n} (was @${me.name}).` : `Welcome, @${n}! That's your name everywhere in Zeron.`, true) }
-    catch (x: any) {
+    setSavingName(true)
+    try {
+      await claimName(n)
+      let pinErr = ''
+      try { await setPin(n, p, question, answer) } catch (x: any) { pinErr = String(x?.message || x) }
+      setDone({ name: n, pinErr })
+    } catch (x: any) {
       const m = friendly(x)
       if (/already taken/i.test(m)) { setTaken((t) => [...t, n]); setErr(`@${n} is already taken — try another`) } else setErr(m)
-      return
-    }
-    if (!r) return
-    let pinErr = ''
-    try { await setPin(n, p, question, answer) } catch (x: any) { pinErr = String(x?.message || x) }
-    setDone({ name: n, link: r.explorer, pinErr })
+    } finally { setSavingName(false) }
   }
   if (done) return done.pinErr
     ? <SetPin name={done.name} title={`You are @${done.name}. PIN not saved yet`} onDone={() => setDone({ ...done, pinErr: '' })} onSkip={() => { setDone(null); onDone?.() }} />
@@ -166,8 +170,7 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: 
     <div className="namepick" onClick={(e) => e.stopPropagation()}>
       <div className="eyebrow">Name claimed</div>
       <h3 style={{ margin: '6px 0' }}>You are @{done.name}</h3>
-      <p className="fine">PIN saved. Log in with @{done.name} + your PIN on any device.</p>
-      <a className="fine" href={done.link} target="_blank" rel="noreferrer">View transaction ↗</a>
+      <p className="fine">Your name is registered. Log in with @{done.name} + your PIN on any device.</p>
       <button type="button" className="btn lime" onClick={() => { setDone(null); setName(''); onDone?.() }}>Continue</button>
     </div>
   )
@@ -175,7 +178,7 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: 
     <div className="namepick" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
       <div className="eyebrow">{me.name ? 'Change your @name' : nudge || 'Pick your @name'}</div>
       {!me.name && <p className="fine">Your @name is who you are in Zeron: on the boards, in the arena and when friends send you $wif. Your first name is free.</p>}
-      {me.name && <p className="fine">You're @{me.name}. Renaming costs {fmt(fee)} WIF: half goes to the dead address and half to the treasury. Your old name becomes free for others.</p>}
+      {me.name && <p className="fine">You're @{me.name}. You can register another name without an on-chain transaction. Previous names remain reserved.</p>}
       <div className="at-input"><span>@</span><input autoFocus placeholder="yourname" value={name} autoCapitalize="none" autoCorrect="off" onChange={(e) => { setErr(''); setName(e.target.value.toLowerCase().replace(/\s/g, '')) }} maxLength={15} aria-label="@name" /></div>
       <div className={'fine namehint ' + (free ? 'good' : name && (isTaken || (!L.loading && L.n === name)) ? 'bad' : '')}>{hint}</div>
       {free && <>
@@ -185,7 +188,7 @@ function NamePick({ me, d, busy, act, approveIfNeeded, onSkip, onDone, nudge }: 
         <div className={'fine namehint ' + (pinOk ? 'good' : pin2.length === 4 && pin !== pin2 ? 'bad' : '')}>{pinHint(pin, pin2)}</div>
       </>}
       {err && <div className="fine namehint bad">{err}</div>}
-      <button type="button" className="btn lime" disabled={!ok || !!busy} onClick={claim}>{busy === 'claim' ? 'Claiming…' : isTaken ? 'Name taken' : (me.name ? `Rename to @${name || '…'} · ${fmt(fee)} WIF` : `Claim @${name || '…'} · free`)}</button>
+      <button type="button" className="btn lime" disabled={!ok || !!busy || savingName} onClick={claim}>{savingName ? 'Registering…' : isTaken ? 'Name taken' : (me.name ? `Register @${name || '…'}` : `Claim @${name || '…'} · free`)}</button>
       {!me.name && <button type="button" className="linkbtn" onClick={() => setLogin(true)}>Already have an @name? Log in</button>}
       {onSkip && <button className="linkbtn" onClick={onSkip}>Skip for now</button>}
     </div>
@@ -198,7 +201,7 @@ const EXPLORER = D.explorer.replace(/\/$/, '')
 type Modal = Npc['kind'] | null
 
 interface Quest { level: number; sword: number; armor: number; charm: number; iron: number; hide: number; glow: number; registered: boolean; rating: number; wins: number; losses: number }
-interface Me { wif?: bigint; eth?: bigint; name?: string; xp?: bigint; streak?: number; entered?: boolean; items: Record<number, number>; allowG?: bigint; allowN?: bigint; allowQ?: bigint; allowS?: bigint; allowA?: bigint; best?: number; q: Quest; wardrobe?: { mask: number; eq: number; starterUsed: boolean }; arms?: { mask: number; eq: number; ammo: number; earnedToday: bigint } }
+interface Me { wif?: bigint; eth?: bigint; name?: string; xp?: bigint; streak?: number; entered?: boolean; playedToday?: boolean; items: Record<number, number>; allowG?: bigint; allowN?: bigint; allowQ?: bigint; allowS?: bigint; allowA?: bigint; best?: number; q: Quest; wardrobe?: { mask: number; eq: number }; arms?: { mask: number; eq: number; ammo: number; earnedToday: bigint } }
 interface Day { pool?: bigint; leader?: string; top?: number; fee?: bigint; prices: Record<number, bigint>; destroyed?: bigint; burnBps?: number; useBurn?: boolean; nameFee?: bigint; chainDay?: number; craftFee?: bigint; pvpStake?: bigint; dailyCap?: bigint; burnedAll?: bigint }
 const Q0: Quest = { level: 0, sword: 0, armor: 0, charm: 0, iron: 0, hide: 0, glow: 0, registered: false, rating: 0, wins: 0, losses: 0 }
 
@@ -218,9 +221,106 @@ function MuteBtn() {
 }
 // credits live in README
 export const _CREDITS = <>art: CC0 "DungeonTileset II" by 0x72 + original sprites · music: "Cave Theme" by Brandon Morris (CC0) and "Dungeon Ambience" by yd (CC0) · sfx: "512 Sound Effects (8-bit)" by Juhani Junkala (CC0), all via OpenGameArt</>
+
+type MenuView = 'stats' | 'profile'
+function MenuButton({ onSelect, showStats = true }: { onSelect: (view: MenuView) => void; showStats?: boolean }) {
+  return <div className="menu-wrap" aria-label="Account menu">
+    <button className="menu-profile-btn" onClick={() => onSelect('profile')}>Profile</button>
+    {showStats && <button className="menu-stats-btn" onClick={() => onSelect('stats')}>Stats</button>}
+  </div>
+}
+function StatsPanel({ stats }: { stats: { burned?: bigint | null; players?: number | null; clears?: number | null } }) {
+  const value = (v: bigint | number | null | undefined, format: (v: any) => string) =>
+    v === undefined ? '…' : v === null ? 'unavailable' : format(v)
+  return <div className="stats-panel">
+    <div className="eyebrow">Stats <span className="live-label">● live on-chain</span></div>
+    <div className="stats-grid">
+      <div className="card"><b>{value(stats.burned, fmt)}</b><span>WIF burned</span></div>
+      <div className="card"><b>{value(stats.players, (v: number) => v.toLocaleString())}</b><span>Players · indexed history</span></div>
+      <div className="card"><b>{value(stats.clears, (v: number) => v.toLocaleString())}</b><span>Levels cleared · 7d</span></div>
+    </div>
+    <p className="fine">These figures are live from Robinhood Chain mainnet. You can verify them on-chain on Blockscout, and check them anytime under Menu → Stats.</p>
+    {D.game && <a className="btn sm" href={`${EXPLORER}/address/${D.game}`} target="_blank" rel="noreferrer">View on Blockscout ↗</a>}
+  </div>
+}
+type Friend = { name: string; address: string }
+function ProfilePanel({ me, d, busy, act, approveIfNeeded, setToast }: any) {
+  const [friends, setFriends] = useState<Friend[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const [friendName, setFriendName] = useState('')
+  const [notice, setNotice] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [selected, setSelected] = useState('')
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('zeron.friends.v1')
+      const parsed = raw ? JSON.parse(raw) : []
+      if (Array.isArray(parsed)) setFriends(parsed.filter((x: any) => typeof x?.name === 'string' && typeof x?.address === 'string'))
+    } catch { /* local friend list is optional */ }
+    setLoaded(true)
+  }, [])
+  useEffect(() => {
+    if (loaded) try { localStorage.setItem('zeron.friends.v1', JSON.stringify(friends)) } catch { /* storage may be unavailable */ }
+  }, [friends, loaded])
+  async function addFriend() {
+    const n = friendName.trim().replace(/^@/, '').toLowerCase()
+    if (!nameRe.test(n)) { setNotice('Use a valid Zeron @name (3–15 characters).'); return }
+    setChecking(true); setNotice('')
+    try {
+      const owner = await lookupName(n)
+      if (!owner || owner === ZERO) { setNotice(`@${n} is not registered in Zeron.`); return }
+      if (owner.toLowerCase() === account().address.toLowerCase()) { setNotice("That's your own account."); return }
+      setFriends(prev => [...prev.filter(f => f.name !== n), { name: n, address: owner }])
+      setFriendName(''); setNotice(`Verified @${n} in Zeron.`)
+    } catch { setNotice("Couldn't verify that @name right now. Try again.") }
+    finally { setChecking(false) }
+  }
+  return <div className="profile-panel">
+    <div className="eyebrow">Profile</div>
+    <div className="card profile-self">
+      <div><span className="fine">Your Zeron account</span><h2>{me.name ? '@' + me.name : 'No @name claimed yet'}</h2><span className="fine">{short(account().address)}</span></div>
+      <span className="chip lime">{fmt(me.wif)} WIF</span>
+    </div>
+    <div className="card">
+      <div className="eyebrow">Friends</div>
+      <p className="fine">Add a Zeron username. Each friend is checked against the live on-chain @name registry, not just saved as a contact.</p>
+      <div className="friend-add">
+        <div className="at-input"><span>@</span><input value={friendName} placeholder="friendname" autoCapitalize="none" autoCorrect="off" onChange={e => setFriendName(e.target.value.toLowerCase().replace(/\s/g, ''))} maxLength={15} /></div>
+        <button className="btn lime sm" disabled={checking || !nameRe.test(friendName.trim().replace(/^@/, '').toLowerCase())} onClick={addFriend}>{checking ? 'Checking…' : 'Add friend'}</button>
+      </div>
+      {notice && <p className="fine friend-notice">{notice}</p>}
+      <div className="friend-list">
+        {friends.length === 0 && <p className="fine dim">No friends added yet.</p>}
+        {friends.map(friend => <div className="friend-row" key={friend.name}>
+          <div><b>@{friend.name}</b><span className="fine">{short(friend.address)}</span></div>
+          <div className="friend-actions">
+            <button className="btn sm lime" onClick={() => setSelected(friend.name)}>Send WIF</button>
+            <button className="linkbtn" onClick={() => { setFriends(prev => prev.filter(f => f.name !== friend.name)); if (selected === friend.name) setSelected('') }}>Remove</button>
+          </div>
+        </div>)}
+      </div>
+    </div>
+    {selected && <div className="card profile-send">
+      <div className="eyebrow">Send WIF to @{selected}</div>
+      <Send key={selected} initialName={selected} compact me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />
+    </div>}
+  </div>
+}
+function MenuPanel({ view, onClose, stats, me, d, busy, act, approveIfNeeded, setToast }: any) {
+  return createPortal(
+    <div className="modal menu-overlay" onClick={onClose}>
+      <div className="card menu-panel" role="dialog" aria-modal="true" aria-label={view === 'stats' ? 'Zeron stats' : 'Zeron profile'} onClick={e => e.stopPropagation()}>
+        <div className="mhead"><span className="eyebrow">{view === 'stats' ? 'Stats' : 'Profile'}</span><button className="btn sm" onClick={onClose}>✕</button></div>
+        {view === 'stats' ? <StatsPanel stats={stats} /> : <ProfilePanel me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 /** title screen: slowly panning, torch-lit dungeon behind the logo and a central play panel */
-/** title screen: panning torch-lit dungeon, logo, Halloween banner, one CTA, live on-chain stats, 3 steps */
-function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me: string; name?: string; stats: { burned?: bigint; players?: number; clears?: number; returning7d?: number; runs7d?: number; batches7d?: number; prizePoolFunded7d?: bigint; prizesPaid7d?: bigint; armoryBalance?: bigint; armoryPaid7d?: bigint; armoryRunwayDays?: number | null } }) {
+/** title screen: logo, Halloween banner, one CTA and wallet status */
+function Opening({ onEnter, onLogin, onMenuView, me }: { onEnter: (t?: Tab) => void; onLogin: () => void; onMenuView: (view: MenuView) => void; me: string }) {
   const map = useMemo(() => dungeonMap(dayNow() % 97 + 3, roomsFor({ kind: 'level', level: 2 } as any).map((r) => r.key)), [])
   const api = useRef<WorldApi | null>(null)
   useEffect(() => {
@@ -229,40 +329,20 @@ function Opening({ onEnter, me, name, stats }: { onEnter: (t?: Tab) => void; me:
     const go = () => { if (!alive) return; const p = pts[i++ % pts.length]; api.current?.walkTo(p.x, p.y); setTimeout(go, 6500) }
     const t = setTimeout(go, 800); return () => { alive = false; clearTimeout(t) }
   }, [map])
-  const n = (v?: number) => (v === undefined ? '…' : v.toLocaleString())
   return (
     <div className="opening">
       <div className="opening-bg" aria-hidden><World map={map} defeated={0} locked={false} paused={false} onInteract={() => {}} onTouchFoe={() => {}} apiRef={api} prompt={() => {}} /></div>
       <div className="opening-veil" />
       <div className="opening-fg">
-        <div className="opening-mute"><MuteBtn /></div>
+        <div className="opening-actions"><MenuButton onSelect={onMenuView} showStats={false} /><MuteBtn /></div>
         {HALLOWEEN && <button className="hw-banner" onClick={() => onEnter('world')}>🎃 <b>Halloween event:</b> the Pumpkin King haunts the Gate. Beat him for a drop-only crown.</button>}
         <Svg src={ICON} className="op-icon" />
         <Svg src={WORDMARK} className="op-word" />
         <div className="op-tag">a daily pixel dungeon powered by $wif</div>
         <button className="btn lime big op-cta" onClick={() => onEnter('world')}>Enter the Depths ▸</button>
-        <div className="fine op-who">{name ? <>Playing as <b>@{name}</b></> : <>Wallet ready · {short(me)}</>} · 0 ETH needed, gas is on Zeron</div>
-        <div className="op-stats">
-          <div><b>{n(stats.players)}</b><span>named wallets · indexed mainnet history</span></div>
-          <div><b>{n(stats.returning7d)}</b><span>returning players · 7d</span></div>
-          <div><b>{n(stats.runs7d)}</b><span>recorded runs · 7d</span></div>
-          <div><b>{n(stats.batches7d)}</b><span>EIP-7702 batches · 7d</span></div>
-          <div><b>{stats.prizePoolFunded7d === undefined ? '…' : fmt(stats.prizePoolFunded7d)}</b><span>WIF into prize pool · 7d</span></div>
-          <div><b>{stats.prizesPaid7d === undefined ? '…' : fmt(stats.prizesPaid7d)}</b><span>WIF prizes paid · 7d</span></div>
-          <div><b>{stats.armoryBalance === undefined ? '…' : fmt(stats.armoryBalance)}</b><span>WIF in Armory rewards</span></div>
-          <div><b>{stats.armoryRunwayDays == null ? '—' : stats.armoryRunwayDays.toFixed(1) + 'd'}</b><span>Armory runway · 7d payout rate</span></div>
-          <div><b className="limet">{stats.burned === undefined ? '…' : fmt(stats.burned)}</b><span>WIF sent to dead addresses</span></div>
-          <div className="op-live">● live mainnet data</div>
-        </div>
-        <div className="op-steps">
-          <div><i>1</i><b>Compete</b><span>Enter ranked runs and buy daily items with WIF.</span></div>
-          <div><i>2</i><b>Pool grows</b><span>80% of ranked-entry and daily-item fees fund that day's prize pool.</span></div>
-          <div><i>3</i><b>Winner gets paid</b><span>After the day ends, anyone can settle the pool to the top ranked player. Then the next contest begins.</span></div>
-        </div>
-        <p className="fine">Armory play rewards are separate. They are paid from a finite prefunded WIF balance, not from the ranked prize pool. The runway above uses its live balance and observed 7-day payouts.</p>
-        <div className="op-links"><button className="linkbtn" onClick={() => onEnter('how')}>How it works</button> · <button className="linkbtn" onClick={() => onEnter('board')}>Leaderboard</button> · <button className="linkbtn" onClick={() => onEnter('burn')}>Destroyed tracker</button></div>
+        <button className="linkbtn" onClick={onLogin}>Already have an account? Log in</button>
+        <div className="fine op-who">Wallet ready · {short(me)} · 0 ETH needed, gas is on Zeron</div>
       </div>
-      <div className="op-foot">Created by Bamio for the World is Flat hackathon</div>
     </div>
   )
 }
@@ -290,10 +370,11 @@ export default function App() {
   const me = useMemo(() => account().address, [])
   const [tab, setTab] = useState<Tab>('world')
   const [opened, setOpened] = useState(false)
+  const [menuView, setMenuView] = useState<MenuView | null>(null)
   const [namePrompt, setNamePrompt] = useState<string>('')
   const [m, setM] = useState<Me>({ items: {}, q: Q0 })
   const [d, setD] = useState<Day>({ prices: PRICES_FALLBACK })
-  const [stats, setStats] = useState<{ burned?: bigint; players?: number; clears?: number; returning7d?: number; runs7d?: number; batches7d?: number; prizePoolFunded7d?: bigint; prizesPaid7d?: bigint; armoryBalance?: bigint; armoryPaid7d?: bigint; armoryRunwayDays?: number | null }>({})
+  const [stats, setStats] = useState<{ burned?: bigint | null; players?: number | null; clears?: number | null }>({})
   const nudged = useRef(false)
   const claimedHere = useRef(false)
   useEffect(() => { if (m.name && !claimedHere.current) setNamePrompt('') }, [m.name])
@@ -307,17 +388,14 @@ export default function App() {
   const needName = deployed && m.name === ''
   const nudge = (why: string) => { if (needName && !nudged.current) { nudged.current = true; setNamePrompt(why); return true } return false }
   const [busy, setBusy] = useState<string>('')
-  // toasts: auto-dismiss after 2.5 s (tap to close early); every tx is kept in the activity list
+  // toasts: auto-dismiss after 2.5 s (tap to close early); transaction details remain available in the toast itself
   const [toast, setToastS] = useState<Act | null>(null)
-  const [acts, setActs] = useState<Act[]>([])
-  const [showActs, setShowActs] = useState(false)
   const tt = useRef<any>(0)
   const setToast = useCallback((t: { msg: string; link?: string; err?: boolean; burned?: bigint | null; gas?: boolean } | null) => {
     clearTimeout(tt.current)
     if (!t) { setToastS(null); return }
     const a: Act = { id: Date.now() + Math.random(), at: Date.now(), ...t }
     setToastS(a); tt.current = setTimeout(() => setToastS(null), 2500)
-    if (t.link || t.err) setActs((x) => [a, ...x].slice(0, 20))
     return a.id
   }, [])
   const [board, setBoard] = useState<any[]>([])
@@ -333,7 +411,7 @@ export default function App() {
       const rc = (address: Hex, abi: any, functionName: string, args: any[] = []) => pub.readContract({ address, abi, functionName, args } as any) as Promise<any>
       const today = Number(await rc(G, gameAbi, 'today'))
       const [wif, eth, name, xp, streak, entered, i1, i2, i3, i4, p4, allowG, allowN, best, pool, leader, top, fee, p1, p2, p3, destroyed, burnBps, useBurn, nameFee, lastDay, allowS, wardrobe, tb] = await Promise.all([
-        rc(W, wifAbi, 'balanceOf', [me]), pub.getBalance({ address: me }), rc(N, namesAbi, 'nameOf', [me]), rc(G, gameAbi, 'xp', [me]), rc(G, gameAbi, 'streak', [me]),
+        rc(W, wifAbi, 'balanceOf', [me]), pub.getBalance({ address: me }), nameForAddress(me), rc(G, gameAbi, 'xp', [me]), rc(G, gameAbi, 'streak', [me]),
         rc(G, gameAbi, 'entered', [BigInt(today), me]), rc(G, gameAbi, 'items', [me, 1]), rc(G, gameAbi, 'items', [me, 2]), rc(G, gameAbi, 'items', [me, 3]), rc(G, gameAbi, 'items', [me, 4]), rc(G, gameAbi, 'itemPrice', [4]),
         rc(W, wifAbi, 'allowance', [me, G]), rc(W, wifAbi, 'allowance', [me, N]), rc(G, gameAbi, 'bestScore', [BigInt(today), me]),
         rc(G, gameAbi, 'pool', [BigInt(today)]), rc(G, gameAbi, 'leader', [BigInt(today)]), rc(G, gameAbi, 'topScore', [BigInt(today)]), rc(G, gameAbi, 'entryFee'),
@@ -349,13 +427,19 @@ export default function App() {
         allowQ = a; craftFee = cf; pvpStake = ps
       }
       const liveStreak = Number(lastDay) >= today - 1 ? Number(streak) : 0
-      setM({ wif, eth, name, xp, streak: liveStreak, entered, items: { 1: Number(i1), 2: Number(i2), 3: Number(i3), 4: Number(i4) }, allowG, allowN, allowQ, allowS, best: Number(best), q, wardrobe: wardrobe ?? undefined, arms: arms?.a, allowA: arms?.allow })
+      setM({ wif, eth, name, xp, streak: liveStreak, entered, playedToday: Number(lastDay) === today, items: { 1: Number(i1), 2: Number(i2), 3: Number(i3), 4: Number(i4) }, allowG, allowN, allowQ, allowS, best: Number(best), q, wardrobe: wardrobe ?? undefined, arms: arms?.a, allowA: arms?.allow })
       setD({ pool, leader, top: Number(top), fee, prices: { 1: p1, 2: p2, 3: p3, 4: p4 }, destroyed, burnBps: Number(burnBps), useBurn, nameFee, chainDay: today, craftFee, pvpStake, dailyCap: arms?.dailyCap, burnedAll: tb.total })
       setBurnTot(tb)
     } catch (e) { console.warn(e) }
   }, [me])
   useEffect(() => { refresh(); const t = setInterval(refresh, 15000); return () => clearInterval(t) }, [refresh])
-  useEffect(() => { if (deployed) homeStats().then(setStats).catch(() => {}) }, [])
+  useEffect(() => {
+    if (!deployed) return
+    let live = true
+    const load = () => homeStats().then(v => { if (live) setStats(v) }).catch(() => { if (live) setStats({ burned: null, players: null, clears: null }) })
+    load(); const timer = setInterval(load, 60000)
+    return () => { live = false; clearInterval(timer) }
+  }, [])
 
   const loadFighters = useCallback(async () => {
     const Qa = (D as any).quest as Hex; if (!Qa) return []
@@ -363,7 +447,7 @@ export default function App() {
     const addrs = await Promise.all([...Array(n)].map((_, i) => pub.readContract({ address: Qa, abi: questAbi, functionName: 'fighterList', args: [BigInt(i)] })))
     return Promise.all(addrs.map(async (a: any) => {
       const [f, p, name] = await Promise.all([pub.readContract({ address: Qa, abi: questAbi, functionName: 'fighters', args: [a] }) as any, pub.readContract({ address: Qa, abi: questAbi, functionName: 'players', args: [a] }) as any,
-        BigInt(a) < 1000n ? Promise.resolve('') : pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'nameOf', args: [a] })])
+        BigInt(a) < 1000n ? Promise.resolve('') : nameForAddress(String(a))])
       return { player: a as string, atk: f[0], def: f[1], hp: f[2], npc: f[3], rating: f[4], wins: f[5], losses: f[6], level: p[0], name: name as string }
     }))
   }, [])
@@ -382,7 +466,7 @@ export default function App() {
         best.set(l.args.player, Math.max(best.get(l.args.player) || 0, Number(l.args.score)))
       }
       const rows = await Promise.all([...best.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20).map(async ([player, score]) => ({
-        player, score, name: (await pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'nameOf', args: [player as Hex] })) as string })))
+        player, score, name: await nameForAddress(player) })))
       setBoard(rows)
       const [fs, bs] = await Promise.all([loadFighters(), recentBurns().catch(() => [] as BurnRow[])])
       setBurns(bs)
@@ -391,7 +475,7 @@ export default function App() {
       const known = new Set(fs.map((f) => f.player.toLowerCase()))
       const extra = [...per.keys()].filter((a) => !known.has(a)).slice(0, 40)
       const ex = await Promise.all(extra.map(async (a) => {
-        const [p, name] = await Promise.all([Qa ? pub.readContract({ address: Qa, abi: questAbi, functionName: 'players', args: [a as Hex] }).catch(() => [0]) as any : [0], pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'nameOf', args: [a as Hex] }).catch(() => '')])
+        const [p, name] = await Promise.all([Qa ? pub.readContract({ address: Qa, abi: questAbi, functionName: 'players', args: [a as Hex] }).catch(() => [0]) as any : [0], nameForAddress(a).catch(() => '')])
         return { player: getAddress(a), level: Number(p[0]), wins: 0, rating: 0, npc: false, name: name as string }
       }))
       const hs = [...fs.filter((f) => !f.npc), ...ex].map((h) => ({ ...h, b: per.get(h.player.toLowerCase()) || 0n }))
@@ -400,7 +484,18 @@ export default function App() {
       setHeroes(hs.map((h, i) => ({ ...h, burned: per.get(h.player.toLowerCase()) || 0n, eq: wr[i]?.eq ?? 0, mask: wr[i]?.mask ?? 1 })))
     } catch (e) { console.warn('board', e) }
   }, [day, loadFighters])
-  useEffect(() => { if (tab === 'board') loadBoard(); if (tab === 'burn') loadBurns() }, [tab, loadBoard, loadBurns])
+  useEffect(() => {
+    if (tab === 'board') {
+      loadBoard()
+      const poll = window.setInterval(loadBurns, 15000)
+      return () => window.clearInterval(poll)
+    }
+    if (tab === 'burn') {
+      loadBurns()
+      const poll = window.setInterval(loadBurns, 15000)
+      return () => window.clearInterval(poll)
+    }
+  }, [tab, loadBoard, loadBurns])
 
   async function act(label: string, calls: Call[], ok: string, rethrow = false) {
     if (!deployed) { setToast({ msg: 'Contracts are not deployed yet, so on-chain actions are off. Free play still works.', err: true }); return null }
@@ -410,10 +505,7 @@ export default function App() {
       const freeOnboarding = await isFreeOnboarding(calls)
       const r = await sponsored(calls); audio.sfx('coin')
       const gasCharged = !freeOnboarding && !!D.relayer && BigInt(D.gasFeeWei || '0') > 0n
-      const id = setToast({ msg: ok, link: r.explorer, gas: gasCharged, burned: null })
-      burnedIn(r.hash).then((b) => {
-        setToastS((t) => (t && t.id === id ? { ...t, burned: b } : t)); setActs((x) => x.map((a) => (a.id === id ? { ...a, burned: b } : a)))
-      }).catch(() => {})
+      setToast({ msg: ok, link: r.explorer, gas: gasCharged, burned: null })
       await refresh(); return r
     }
     catch (e: any) { console.warn(label, e); if (rethrow) throw e; setToast({ msg: friendly(e), err: true }); return null }
@@ -424,7 +516,6 @@ export default function App() {
     const to = spender === 'G' ? D.game : spender === 'N' ? D.names : spender === 'S' ? D.shop : (D as any).quest
     return (cur ?? 0n) >= need ? [] : [tx(D.wif, wifAbi, 'approve', [to, maxUint256])]
   }
-  const starter = () => act('starter', [tx(D.shop!, shopAbi, 'starter')], `Welcome gift: ${D.starter ?? 5} WIF is in your wallet.`)
 
   const sw = useRef<{ x: number; y: number } | null>(null)
   const TABS: Tab[] = ['world', 'board', 'burn', 'how']
@@ -434,7 +525,7 @@ export default function App() {
     if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) { const i = TABS.indexOf(tab) + (dx < 0 ? 1 : -1); if (i >= 0 && i < TABS.length) setTab(TABS[i]) }
   }
 
-  if (!opened) return <Opening me={me} name={m.name} stats={stats} onEnter={(t) => { audio.unlock(); setTab(t || 'world'); setOpened(true); if (needName || (deployed && m.name === undefined)) setNamePrompt('Pick your @name') }} />
+  if (!opened) return <><Opening me={me} onMenuView={setMenuView} onLogin={() => { setOpened(true); setNamePrompt('Log in') }} onEnter={(t) => { audio.unlock(); setTab(t || 'world'); setOpened(true); if (needName || (deployed && m.name === undefined)) setNamePrompt('Pick your @name') }} />{menuView && <MenuPanel view={menuView} onClose={() => setMenuView(null)} stats={stats} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}</>
   return (
     <div className="shell" onTouchStart={onTS} onTouchEnd={onTE}>
       <header className="top">
@@ -444,8 +535,6 @@ export default function App() {
           <div className="chip lime"><Sprite name="coin" size={14} /> {fmt(m.wif)} WIF</div>
           <button className="chip burnchip" onClick={() => setTab('burn')} title="Total WIF destroyed by FeeSink contracts, read on-chain">🔥 {fmt(d.burnedAll)} destroyed</button>
           <div className="chip dim" title="You never need ETH. Zeron pays the gas.">⛽ 0 ETH · gas by Zeron</div>
-          <button className="chip" onClick={() => setShowActs((v) => !v)} title="Your recent transactions">≡ Activity{acts.length ? ` (${acts.length})` : ''}</button>
-          {D.shop && m.wardrobe && !m.wardrobe.starterUsed && <button className="chip lime gift" disabled={!!busy} onClick={starter}>{busy === 'starter' ? '…' : `🎁 Claim ${D.starter ?? 5} WIF`}</button>}
         </div>
       </header>
       {!deployed && <div className="banner">Contracts aren't live yet, so this is practice mode.</div>}
@@ -454,23 +543,19 @@ export default function App() {
       </nav>
       <main>
         <div style={{ display: tab === 'world' ? 'block' : 'none' }}>
-          <Game nudge={nudge} day={day} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} player={me} setToast={setToast} refresh={refresh} loadFighters={loadFighters} active={tab === 'world'} starter={starter} setTab={setTab} />
+          <Game me={m} player={me} d={d} day={day} setTab={setTab} nudge={nudge} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} refresh={refresh} loadFighters={loadFighters} />
         </div>
-        {tab === 'board' && <Board d={d} board={board} me={me} day={day} busy={busy} act={act} reload={loadBoard} heroes={heroes} />}
+        {tab === 'board' && <Board d={d} board={board} me={me} day={day} busy={busy} act={act} reload={loadBoard} heroes={heroes} burns={burns} reloadBurns={loadBurns} />}
         {tab === 'burn' && <BurnPanel tot={burnTot} burns={burns} reload={() => { refresh(); loadBurns() }} d={d} />}
         {tab === 'how' && <How d={d} />}
       </main>
       {opened && pinFor && !namePrompt && <div className="modal"><div className="card mbox"><SetPin name={pinFor} title="New: log in anywhere" onDone={() => { setPinFor(''); setToast({ msg: `PIN saved. Log in with @${pinFor} + PIN on any device.` }) }} onSkip={() => { sessionStorage.setItem('zeron.pinskip', pinFor); setPinFor('') }} /></div></div>}
-      {namePrompt && <div className="modal"><div className="card mbox"><NamePick me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} nudge={namePrompt} onDone={() => setNamePrompt('')} onSkip={() => { nudged.current = namePrompt === 'Pick your @name' ? false : true; setNamePrompt('') }} /></div></div>}
+      {namePrompt && <div className="modal"><div className="card mbox"><NamePick me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} nudge={namePrompt} startLogin={namePrompt === 'Log in'} onDone={() => setNamePrompt('')} onSkip={() => { nudged.current = namePrompt === 'Pick your @name' ? false : true; setNamePrompt('') }} /></div></div>}
       {toast && <div className={'toast ' + (toast.err ? 'err' : '')} onClick={() => setToast(null)} role="status">
         <div>{toast.msg}{toast.link && <> · <a href={toast.link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>view tx ↗</a></>}</div>
         {toast.gas && <div className="toast-sub">⛽ Gas: 0.2 WIF (0.1 to dead address + 0.1 to relayer) · FeeSink destroyed: {toast.burned === null || toast.burned === undefined ? '…' : fmt(toast.burned)}</div>}
       </div>}
-      {showActs && <div className="acts card" onClick={(e) => e.stopPropagation()}>
-        <div className="mhead"><span className="eyebrow">Activity</span><button className="btn sm" onClick={() => setShowActs(false)}>✕</button></div>
-        {acts.length === 0 && <div className="fine dim">No transactions yet this session.</div>}
-        {acts.map((a) => <div key={a.id} className={'actrow ' + (a.err ? 'bad' : '')}><span className="dim">{new Date(a.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><span>{a.msg}{a.gas && <small className="dim"> · gas 0 ETH · FeeSink destroyed {a.burned === null || a.burned === undefined ? '…' : fmt(a.burned)} WIF</small>}</span>{a.link && <a href={a.link} target="_blank" rel="noreferrer">tx ↗</a>}</div>)}
-      </div>}
+      {menuView && <MenuPanel view={menuView} onClose={() => setMenuView(null)} stats={stats} me={m} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} />}
       <footer>Created by Bamio for the World is Flat hackathon</footer>
     </div>
   )
@@ -479,7 +564,8 @@ export default function App() {
 /* ------------------------------ the walkable game: fights happen right on the map ------------------------------ */
 const FXTEXT: Partial<Record<Fx, string>> = { feint: 'FEINT', heal: 'HEALS', shell: 'HARDENS', stun: 'STUNNED', canfinish: 'FINISH!' }
 type Num = { id: number; x: number; y: number; v?: number; txt?: string; cls: string }
-function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast, refresh, loadFighters, active, starter, setTab }: any) {
+function Game({ me, player, d, day, setTab, nudge, busy, act, approveIfNeeded, setToast, refresh, loadFighters }: any) {
+  const active = typeof document === 'undefined' || document.visibilityState === 'visible'
   const [townFull, setTownFull] = useState(true)
   const town = useMemo(() => townMap(), [])
   const [mode, setMode] = useState<Mode | null>(null)
@@ -507,9 +593,13 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
   const gear = { level: q.level, sword: q.sword, armor: q.armor, charm: q.charm }
   const runRef = useRef<RT | null>(run); runRef.current = run
   const arms = me.arms || { mask: 0, eq: 0, ammo: 0 }
+  const dailyAttemptKey = `zeron.daily.attempt.${player.toLowerCase()}.${day}`
+  const [dailyAttempted, setDailyAttempted] = useState(false)
+  useEffect(() => { setDailyAttempted(localStorage.getItem(dailyAttemptKey) === '1') }, [dailyAttemptKey])
 
   const engaged = useRef(-1)
   const begin = (md: Mode, r: boolean, lo: ItemId[]) => {
+    if (md.kind === 'daily' && r) { localStorage.setItem(dailyAttemptKey, '1'); setDailyAttempted(true) }
     setFade(true); setModal(null)
     setTimeout(() => {
       const st = rtStart(md, lo, gear, arms.eq, arms.ammo); evs.current = []; queue.current = []
@@ -596,9 +686,14 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
       const earnTxt = (c: any) => (c && c.earned ? ` +${c.earned} WIF earned.` : '')
       if (mode.kind === 'level') {
         const s = await postRun({ player, level: mode.level, salt: mode.salt, loadout: LEVEL_KIT, events })
-        if (!s.cleared) { setToast({ msg: 'The server replay did not see a boss clear.', err: true }); return }
+        if (!s.cleared) {
+          const message = 'The server replay did not see a boss clear.'
+          if (bg) setBgSave(`L${mode.level} save failed: ${message}`)
+          else setToast({ msg: message, err: true })
+          return false
+        }
         const r = await act('record', [s.endgame ? tx((D as any).questX, questXAbi, 'recordClear', [s.level, s.loot.iron, s.loot.hide, s.loot.glow, BigInt(s.deadline), s.sig]) : tx((D as any).quest, questAbi, 'recordClear', [s.level, s.loot.iron, s.loot.hide, s.loot.glow, BigInt(s.deadline), s.sig]), ...claimTx(s.claim)],
-          `Level ${s.level} checkpoint saved: +${s.loot.iron} iron, +${s.loot.hide} hide${s.loot.glow ? `, +${s.loot.glow} glow` : ''}.${earnTxt(s.claim)}`)
+          `Level ${s.level} checkpoint saved: +${s.loot.iron} iron, +${s.loot.hide} hide${s.loot.glow ? `, +${s.loot.glow} glow` : ''}.${earnTxt(s.claim)}`, bg)
         if (r && !bg) setRecorded(r.explorer); return !!r
       } else if (mode.kind === 'event') {
         const s = await postRun({ player, event: true, salt: mode.salt, loadout: LEVEL_KIT, events })
@@ -611,24 +706,53 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
         if (r) { setRecorded(r.explorer); setLoadout([]) }
         return !!r
       }
-    } catch (e: any) { setToast({ msg: friendly(e), err: true }) }
+    } catch (e: any) {
+      const message = friendly(e)
+      if (bg) setBgSave(`L${mode?.kind === 'level' ? mode.level + ' ' : ''}save failed: ${message}`)
+      else setToast({ msg: message, err: true })
+      refresh()
+      return false
+    }
     refresh()
   }
 
-  const saveQ = useRef<Promise<unknown>>(Promise.resolve())
   const [bgSave, setBgSave] = useState('')
-  /** level cleared -> queue the checkpoint save (non-blocking) and go straight into the next level */
-  const nextLevel = () => {
-    if (!mode || mode.kind !== 'level') return
+  const [savingCheckpoint, setSavingCheckpoint] = useState(false)
+  /** Never leave a cleared level until its checkpoint transaction is confirmed. */
+  const nextLevel = async () => {
+    if (!mode || mode.kind !== 'level' || savingCheckpoint) return
     const lv = mode.level, events = evs.current
-    if (!recorded) {
-      setBgSave(`Saving L${lv} checkpoint…`)
-      saveQ.current = saveQ.current.then(() => record(true, events)).then((ok) => { setBgSave(ok ? `L${lv} checkpoint saved ✓` : `L${lv} save failed: replay it from the Gate`); setTimeout(() => setBgSave(''), 5000) })
+    setSavingCheckpoint(true)
+    setBgSave(`Saving L${lv} checkpoint…`)
+    try {
+      const saved = recorded ? true : await record(true, events)
+      if (!saved) {
+        setBgSave(`L${lv} checkpoint failed. Your next level is locked until this save succeeds.`)
+        return
+      }
+      setBgSave(`L${lv} checkpoint saved ✓`)
+      begin({ kind: 'level', level: lv + 1, salt: Math.floor(Math.random() * 1000) }, false, LEVEL_KIT)
+    } finally {
+      setSavingCheckpoint(false)
     }
-    begin({ kind: 'level', level: lv + 1, salt: Math.floor(Math.random() * 1000) }, false, LEVEL_KIT)
   }
-  const retry = () => { if (!mode) return
+  const retry = () => { if (!mode || (mode.kind === 'daily' && ranked)) return
     begin(mode.kind === 'daily' ? mode : { ...mode, salt: Math.floor(Math.random() * 1000) } as Mode, mode.kind === 'daily' ? ranked : false, mode.kind === 'daily' ? loadout : LEVEL_KIT) }
+  /** Save a cleared campaign level before returning to town. */
+  const backToTown = async () => {
+    if (savingCheckpoint) return
+    if (mode?.kind === 'level' && run?.cleared && !recorded) {
+      setSavingCheckpoint(true)
+      setBgSave(`Saving L${mode.level} checkpoint…`)
+      try {
+        const saved = await record(true, evs.current)
+        if (!saved) return
+      } finally {
+        setSavingCheckpoint(false)
+      }
+    }
+    leave()
+  }
   const [shopTab, setShopTab] = useState<string>('weapons')
   const onInteract = (n: Npc) => { setShopTab(n.stall === 'potions' ? 'items' : n.stall === 'tailor' ? 'wardrobe' : 'weapons'); if (n.kind === 'talk') { setToast({ msg: n.line || 'Hello!' }); return } if (n.kind === 'arena' && nudge('Claim an @name before you fight')) return; setModal(n.kind) }
   const onTouchFoe = (idx: number) => { if (run && !run.done && idx === run.room && !fight) { engaged.current = idx; setFight(true); audio.sfx('hit') } }
@@ -752,19 +876,19 @@ function Game({ nudge, day, me, d, busy, act, approveIfNeeded, player, setToast,
           {run.earned > 0 && <div className="earn">+{rewardAmount(run.earned)} WIF earned this run <span className="fine dim">(paid from the funded Armory pool when you save · {fmt(d.dailyCap)} WIF daily cap per wallet)</span></div>}
           {bgSave && <p className="fine limet">{bgSave}</p>}
           <div className="row">
-            {mode.kind === 'level' && run.cleared && mode.level < MAX_LEVEL && <button className="btn lime" onClick={nextLevel}>Next level ▶ <span className="fine">(saves L{mode.level})</span></button>}
+            {mode.kind === 'level' && run.cleared && mode.level < MAX_LEVEL && <button className="btn lime" onClick={nextLevel} disabled={savingCheckpoint || !!busy}>{savingCheckpoint ? "Saving checkpoint…" : "Next level ▶"} <span className="fine">(saves L{mode.level} first)</span></button>}
             {(mode.kind !== 'level' || mode.level >= MAX_LEVEL) && (mode.kind === 'daily' || run.cleared) && (!recorded
               ? <button className="btn lime" disabled={!!busy} onClick={() => record()}>{busy === 'record' ? 'Saving…' : mode.kind === 'level' ? 'Save checkpoint + claim WIF (free)' : mode.kind === 'event' ? 'Claim the crown + WIF (free)' : 'Record + claim WIF (free)'}</button>
               : recorded && <a className="btn" href={recorded} target="_blank" rel="noreferrer">View tx ↗</a>)}
             {mode.kind === 'level' && run.cleared && mode.level < MAX_LEVEL && (!recorded ? <button className="btn" disabled={!!busy} onClick={() => record()}>{busy === 'record' ? 'Saving…' : 'Save only'}</button> : <a className="btn" href={recorded} target="_blank" rel="noreferrer">View tx ↗</a>)}
-            {mode.kind === 'daily' && <button className="btn" onClick={retry}>↻ Retry</button>}
-            <button className="btn" onClick={() => { if (mode.kind === 'level' && run.cleared && !recorded) { const ev = evs.current; setBgSave(`Saving L${mode.level} checkpoint…`); saveQ.current = saveQ.current.then(() => record(true, ev)).then((ok) => { setBgSave(ok ? 'Checkpoint saved ✓' : 'Checkpoint save failed'); setTimeout(() => setBgSave(''), 5000) }) } leave() }}>Back to town</button>
+            {mode.kind === 'daily' && !ranked && <button className="btn" onClick={retry}>↻ Retry</button>}
+            <button className="btn" onClick={backToTown} disabled={savingCheckpoint || !!busy}>{savingCheckpoint ? 'Saving checkpoint…' : 'Back to town'}</button>
           </div>
           {mode.kind === 'daily' && !ranked && <p className="fine">Free run: counts for XP, your streak and WIF earnings, not the leaderboard.</p>}
         </Panel>
       )}
-      {modal === 'gate' && <RunStart me={me} d={d} day={day} busy={busy} act={act} approveIfNeeded={approveIfNeeded} loadout={loadout} setLoadout={setLoadout} begin={begin} close={() => setModal(null)} />}
-      {modal === 'market' && <Panel title="Shop" onClose={() => setModal(null)}><ShopPanel me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} starter={starter} initTab={shopTab} /></Panel>}
+      {modal === 'gate' && <RunStart me={me} d={d} day={day} dailyAttempted={dailyAttempted} busy={busy} act={act} approveIfNeeded={approveIfNeeded} loadout={loadout} setLoadout={setLoadout} begin={begin} close={() => setModal(null)} />}
+      {modal === 'market' && <Panel title="Shop" onClose={() => setModal(null)}><ShopPanel me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} initTab={shopTab} /></Panel>}
       {modal === 'names' && <Panel title="@Names & Send" onClose={() => setModal(null)}><Send me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} setToast={setToast} /></Panel>}
       {modal === 'board' && <Panel title="Today's pool" onClose={() => setModal(null)}><div className="pool"><Sprite name="coin" size={18} /> {fmt(d.pool)} WIF in today's prize pool · top score {d.top || '–'}</div><p className="fine">Open the Leaderboard tab for the full boards.</p></Panel>}
       {modal === 'forge' && <Panel title="Forge" onClose={() => setModal(null)}><Forge me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} /></Panel>}
@@ -858,8 +982,8 @@ const NPCK: Record<number, string> = { 1: 'slime', 2: 'bat', 3: 'golem', 4: 'sku
 function Bar({ v, max, label, foe }: { v: number; max: number; label: string; foe?: boolean }) {
   return <div className="bar"><div className={'fill ' + (foe ? 'foe' : '')} style={{ width: `${Math.max(0, (v / max) * 100)}%` }} /><span>{label}</span></div>
 }
-const REC: string[] = ['Any weapon works. Hit King Slime while it wobbles.', 'Block twice when the Chief whistles.', 'Block or parry the bone throw. Sword tier 1+.', 'Parry the charge. Armor tier 1+.', 'Block the fire breath. Fire Staff burn adds up.', 'Interrupt the glow: Twin Daggers or Spear.', 'Armor tier 2+ and potions for the slams.', 'Full kit. Keep energy potions for after a grab.']
-function RunStart({ me, d, day, busy, act, approveIfNeeded, loadout, setLoadout, begin, close }: any) {
+const REC: string[] = ['Any weapon works. Hit King Slime while it wobbles.', 'Block twice when the Chief whistles.', 'Block or parry the bone throw. Sword tier 1+.', 'Parry the charge. Armor tier 1+.', 'Block the fire breath. Fire Staff burn adds up.', 'Interrupt the glow: Twin Daggers or Spear.', 'Armor tier 2+ and potions for the slams.', 'Full kit. Keep energy potions for after a grab.', 'Bring upgraded armor and keep pressure on the Frozen Titan.', 'Use potions efficiently; the Drowned King heals when weakened.', 'Defend against the Ringmaster double strike.', 'Bring a high-tier weapon, armor and spare healing for the final boss.']
+function RunStart({ me, d, day, dailyAttempted, busy, act, approveIfNeeded, loadout, setLoadout, begin, close }: any) {
   const q: Quest = me.q; const next = Math.min(q.level + 1, MAX_LEVEL)
   const [sel, setSel] = useState<number>(next)
   const inv: Record<number, number> = me.items || {}
@@ -901,20 +1025,21 @@ function RunStart({ me, d, day, busy, act, approveIfNeeded, loadout, setLoadout,
             <button key={i} className={'item ' + (count(i) ? 'sel' : '')} onClick={() => toggle(i)} disabled={!(inv[i] > 0)}>
               <Sprite name={{ 1: 'potion', 2: 'whet', 3: 'ward', 4: 'potion' }[i]!} size={26} /><div><b>{ITEMS[i].name}</b> <span className="dim">×{inv[i] || 0}{count(i) ? ` · taking ${count(i)}` : ''}</span></div>
             </button>))}
+          <p className="fine">15 enemies (14 unique types + the Daily Warden) · one ranked attempt per day · up to <b className="limet">30 WIF</b> for a full clear when reward signing is configured and the Armory pool has funds. Starting the attempt locks it for today. Ranked entry fees separately fund the leaderboard prize pool.</p>
           <div className="row">
-            <button className="btn" onClick={() => begin({ kind: 'daily', day }, false, loadout)}>Free daily run</button>
-            {me.entered ? <button className="btn lime" onClick={() => begin({ kind: 'daily', day }, true, loadout)}>Ranked run</button>
-              : <button className="btn lime" disabled={!!busy} onClick={enter}>{busy === 'enter' ? 'Entering…' : `Enter ranked · ${fmt(d.fee ?? parseEther('100'))} WIF`}</button>}
+            {me.playedToday ? <button className="btn lime" disabled>✓ Today's challenge completed</button>
+              : dailyAttempted ? <button className="btn lime" disabled>✓ Today's attempt already used</button>
+              : me.entered ? <button className="btn lime" onClick={() => begin({ kind: 'daily', day }, true, loadout)}>▶ Start Daily Challenge</button>
+              : <button className="btn lime" disabled={!!busy} onClick={enter}>{busy === 'enter' ? 'Entering…' : `Enter Daily Challenge · ${fmt(d.fee ?? parseEther('100'))} WIF`}</button>}
           </div>
-          <p className="fine">Same dungeon for everyone today. The top ranked score takes the pool.</p>
+          <p className="fine">Same 15-enemy dungeon for everyone today. The top ranked score takes the day's entry-fee pool.</p>
         </details>
       </div>
     </Panel>
   )
 }
 
-/** one Shop: consumables, weapons (with inventory + equip), wardrobe, starter gift */
-function ShopPanel({ me, d, busy, act, approveIfNeeded, starter, initTab }: any) {
+function ShopPanel({ me, d, busy, act, approveIfNeeded, initTab }: any) {
   const [tab, setTab] = useState<'weapons' | 'items' | 'wardrobe'>(initTab || 'weapons')
   const arms = me.arms || { mask: 0, eq: 0, ammo: 0 }
   const owns = (i: number) => i === 0 || ((arms.mask >> i) & 1) === 1
@@ -933,7 +1058,6 @@ function ShopPanel({ me, d, busy, act, approveIfNeeded, starter, initTab }: any)
     <div className="shop2">
       <div className="row stabs">{(['weapons', 'items', 'wardrobe'] as const).map((t) => <button key={t} className={'btn sm' + (tab === t ? ' lime' : '')} onClick={() => setTab(t)}>{{ weapons: '⚔ Weapons', items: '✚ Potions & items', wardrobe: '👘 Wardrobe' }[t]}</button>)}
         <span className="fine dim">You have {fmt(me.wif)} WIF</span></div>
-      {me.wardrobe && !me.wardrobe.starterUsed && <div className="item gift"><b>🎁 New here?</b><span className="fine">{D.starter ?? 5} WIF, once per wallet.</span><button className="btn lime sm" disabled={!!busy} onClick={starter}>{busy === 'starter' ? '…' : `Claim ${D.starter ?? 5} WIF`}</button></div>}
       {tab === 'weapons' && <>
         {!A && <p className="fine">Weapons are not deployed on this network yet.</p>}
         <div className="eyebrow">Inventory · tap to equip (your weapon special, key L)</div>
@@ -978,21 +1102,27 @@ function BurnPanel({ tot, burns, reload }: any) {
         <div className="eyebrow">Total WIF destroyed by FeeSink contracts (read on-chain)</div>
         <div className="burnbig">🔥 {tot ? fmt(tot.total) : '…'} <small>WIF</small></div>
         <div className="parts">{tot?.parts.map((p: any) => <a key={p.addr} href={`${EXPLORER}/address/${p.addr}`} target="_blank" rel="noreferrer" className="chip">{p.label}: {fmt(p.v)}</a>)}</div>
-        <p className="fine">Players do not need ETH. A standard sponsored batch costs 0.2 WIF: 0.1 goes to the dead address and 0.1 repays the relayer. The first starter grant and first @name claim are free onboarding exceptions. FeeSink totals above count contract fee destruction only; they do not include the separate gas-fee transfers.</p>
       </div>
       <div className="card span2">
-        <div className="mhead"><span className="eyebrow">Recent FeeSink destruction</span><button className="btn sm" onClick={reload}>Refresh</button></div>
+        <p className="fine">Players do not need ETH. A standard sponsored batch costs 0.2 WIF: 0.1 goes to the dead address and 0.1 repays the relayer. The first @name claim is a free onboarding exception. FeeSink totals count contract fee destruction only, not separate gas-fee transfers.</p>
+        <div className="mhead"><span className="eyebrow">Live mainnet burn transactions <small className="live-label">● auto-refresh · 15s</small></span><button className="btn sm" onClick={reload}>Refresh</button></div>
         <ol className="lb burns">
-          {burns === null && <li className="dim">Loading…</li>}
-          {burns?.length === 0 && <li className="dim">No FeeSink destruction events found.</li>}
-          {burns?.slice(0, 30).map((b: BurnRow) => <li key={b.hash + b.sink + String(b.amount)}><span>🔥 {fmt(b.amount)}</span><span className="dim">{b.sink}</span><span>{b.player ? short(b.player) : ''}</span><a href={`${EXPLORER}/tx/${b.hash}`} target="_blank" rel="noreferrer">tx ↗</a></li>)}
+          {burns === null && <li className="dim">Reading Robinhood Chain mainnet…</li>}
+          {burns?.length === 0 && <li className="dim">No FeeSink destruction events found in the indexed range.</li>}
+          {burns?.slice(0, 30).map((b: BurnRow) => <li key={b.hash + b.sink + String(b.amount)}>
+            <span>🔥 {fmt(b.amount)} WIF</span>
+            <span className="dim">{b.viaBurn ? 'Native token burn' : 'Sent to dead address'} · {b.sink}</span>
+            <span>{b.player ? short(b.player) : 'Player unavailable'}</span>
+            <a href={`${EXPLORER}/tx/${b.hash}`} target="_blank" rel="noreferrer">View tx ↗</a>
+          </li>)}
         </ol>
+        <p className="fine dim">Each row is an on-chain FeeSink Destroyed event. “Native token burn” means total WIF supply was reduced; “Sent to dead address” means tokens were transferred to 0x…dEaD. Open the transaction to verify it on Blockscout.</p>
       </div>
     </section>
   )
 }
 
-function Board({ d, board, me, day, busy, act, reload, heroes }: any) {
+function Board({ d, board, me, day, busy, act, reload, heroes, burns, reloadBurns }: any) {
   return (
     <section className="grid2">
       <div className="card span2">
@@ -1021,16 +1151,26 @@ function Board({ d, board, me, day, busy, act, reload, heroes }: any) {
           <li><b>Play to earn:</b> +{rewardAmount(3)} WIF per small enemy, +{rewardAmount(10)} WIF per boss, and +{rewardAmount(10)} WIF per level clear at the current mainnet reward scale. Paid from the prefunded Armory pool (not minted), up to {fmt(d.dailyCap)} WIF per wallet per day and only while funds remain.</li>
           <li><b>PvP:</b> the winner takes 90% of the stake; 10% is sent to the dead address.</li>
           <li><b>🎃 Pumpkin King:</b> drops his Crown costume and the Pumpkin Launcher.</li>
-          <li><b>Free:</b> your first @name, and a small WIF welcome gift once per wallet while the pool lasts.</li>
         </ul>
         <p className="fine dim">No seasons, airdrops or token prizes beyond these. This is real $wif on Robinhood Chain mainnet.</p>
+      </div>
+      <div className="card span2">
+        <div className="mhead"><span className="eyebrow">Live burn transactions <small className="live-label">● mainnet · 15s refresh</small></span><button className="btn sm" onClick={reloadBurns}>Refresh</button></div>
+        <ol className="lb burns">
+          {burns === null && <li className="dim">Reading Robinhood Chain mainnet…</li>}
+          {burns?.length === 0 && <li className="dim">No FeeSink destruction events found in the indexed range.</li>}
+          {burns?.slice(0, 8).map((b: BurnRow) => <li key={b.hash + b.sink + String(b.amount)}>
+            <span>🔥 {fmt(b.amount)} WIF</span><span className="dim">{b.viaBurn ? 'Native burn' : 'Dead-address transfer'} · {b.sink}</span>
+            <span>{b.player ? short(b.player) : 'Player unavailable'}</span><a href={`${EXPLORER}/tx/${b.hash}`} target="_blank" rel="noreferrer">View tx ↗</a>
+          </li>)}
+        </ol>
       </div>
     </section>
   )
 }
 
-function Send({ me, d, busy, act, approveIfNeeded, setToast }: any) {
-  const [to, setTo] = useState(''); const [amt, setAmt] = useState('10'); const [rename, setRename] = useState(false); const [pinSet, setPinSet] = useState(false); const [loginOpen, setLoginOpen] = useState(false)
+function Send({ me, busy, act, setToast, initialName = '', compact = false }: any) {
+  const [to, setTo] = useState(initialName); const [amt, setAmt] = useState('10'); const [rename, setRename] = useState(false); const [pinSet, setPinSet] = useState(false); const [loginOpen, setLoginOpen] = useState(false)
   const n = to.trim().replace(/^@/, '').toLowerCase()
   const L = useNameLookup(n)
   const v = (() => { try { return parseEther(amt || '0') } catch { return 0n } })()
@@ -1039,17 +1179,16 @@ function Send({ me, d, busy, act, approveIfNeeded, setToast }: any) {
   const status = !n ? '' : !nameRe.test(n) ? 'Names are 3–15 characters: a–z, 0–9 and _.' : L.loading || L.n !== n ? 'Looking up…' : L.owner === undefined ? "Couldn't check right now." : L.owner === ZERO ? `No player called @${n} yet` : self ? "That's you." : `✓ @${n} found`
   const low = me.wif !== undefined && v > me.wif
   async function send() {
-    // read-only check first: never send a tx that would revert on an unknown name
-    const o = await pub.readContract({ address: D.names as Hex, abi: namesAbi, functionName: 'resolve', args: [n] }).catch(() => undefined) as string | undefined
-    if (!o || o === ZERO) { setToast({ msg: `No player called @${n} yet`, err: true }); return }
-    await act('send', [...approveIfNeeded('N', v), tx(D.names, namesAbi, 'sendToName', [n, v])], `Sent ${amt} WIF to @${n}.`)
+    const owner = await lookupName(n).catch(() => ZERO)
+    if (!owner || owner === ZERO) { setToast({ msg: `No player called @${n} yet`, err: true }); return }
+    await act('send', [tx(D.wif, wifAbi, 'transfer', [owner, v])], `Sent ${amt} WIF to @${n}.`)
   }
   return (
     <section className="grid2">
-      <div className="card">
-        {me.name && !rename ? <><div className="eyebrow">Your @name</div><h2>@{me.name}</h2><p className="fine">This is your identity everywhere in Zeron.</p><button className="linkbtn" onClick={() => setRename(true)}>Change name ({fmt(d.nameFee)} WIF)</button></>
-          : <NamePick me={me} d={d} busy={busy} act={act} approveIfNeeded={approveIfNeeded} onDone={() => setRename(false)} onSkip={me.name ? () => setRename(false) : undefined} />}
-      </div>
+      {!compact && <div className="card">
+        {me.name && !rename ? <><div className="eyebrow">Your @name</div><h2>@{me.name}</h2><p className="fine">This is your identity everywhere in Zeron.</p><button className="linkbtn" onClick={() => setRename(true)}>Change name (free)</button></>
+          : <NamePick me={me} busy={busy} onDone={() => setRename(false)} onSkip={me.name ? () => setRename(false) : undefined} />}
+      </div>}
       <div className="card">
         <div className="eyebrow">Send $wif by @name</div>
         <div className="at-input"><span>@</span><input placeholder="friend" value={to} onChange={(e) => setTo(e.target.value.toLowerCase().replace(/\s/g, ''))} maxLength={16} aria-label="send to @name" /></div>
@@ -1059,9 +1198,9 @@ function Send({ me, d, busy, act, approveIfNeeded, setToast }: any) {
         <button className="btn lime" disabled={!found || !!self || v <= 0n || low || !!busy} onClick={send}>{busy === 'send' ? 'Sending…' : found && !self ? `Send ${amt || 0} WIF to @${n}` : `Send ${amt || 0} WIF`}</button>
         <p className="fine">There's no fee on sends, and you need zero ETH.</p>
       </div>
-      <div className="card span2 fine">Your game wallet lives in this browser (address {short(account().address)}). <button className="link" onClick={() => { navigator.clipboard.writeText(getKey()); alert('Private key copied. Keep it safe.') }}>Export key</button>{me.name && <> · <button className="link" onClick={() => setPinSet(true)}>Change PIN</button></>} · <button className="link" onClick={() => setLoginOpen(true)}>Log in to another @name</button>
+      {!compact && <div className="card span2 fine">Your game wallet lives in this browser (address {short(account().address)}). <button className="link" onClick={() => { navigator.clipboard.writeText(getKey()); alert('Private key copied. Keep it safe.') }}>Export key</button>{me.name && <> · <button className="link" onClick={() => setPinSet(true)}>Change PIN</button></>} · <button className="link" onClick={() => setLoginOpen(true)}>Log in to another @name</button>
         {pinSet && <SetPin name={me.name} title="Change PIN" onDone={() => { setPinSet(false); setToast({ msg: 'PIN saved.' }) }} onSkip={() => setPinSet(false)} />}
-        {loginOpen && <PinLogin onBack={() => setLoginOpen(false)} backLabel="Cancel" />}</div>
+        {loginOpen && <PinLogin onBack={() => setLoginOpen(false)} backLabel="Cancel" />}</div>}
     </section>
   )
 }
@@ -1071,12 +1210,12 @@ function How({ d }: any) {
     <section className="card how">
       <h2>How it works</h2>
       <ol>
-        <li><b>Zero ETH needed.</b> Your game wallet is created in your browser. When you make an on-chain move, it signs the exact request and our sponsor submits it and pays ETH gas using EIP-7702. A standard sponsored batch costs 0.2 WIF: 0.1 goes to the dead address and 0.1 goes to the relayer. The starter grant and first @name claim are free onboarding exceptions. $wif powers the game.</li>
+        <li><b>Log in anywhere.</b> Returning players can choose Log in from the title screen and restore their wallet with @name + PIN. PIN login does not submit a transaction or require the relayer.</li>
         <li><b>Free play every day.</b> One hand-seeded dungeon per day, the same for everyone. Free runs earn XP and keep your streak.</li>
-        <li><b>$wif does the work:</b> the ranked entry ({fmt(d.fee)} WIF), the shop (potions, whetstones, wards), @names, and sending to friends by name.</li>
-        <li><b>Fees.</b> The deployed FeeSink contracts transfer configured fee shares to the dead address. They do not call the token's native supply-reduction function. Current shares: Game and Quest 20%; Names, Shop and Armory 50%; PvP stake 10%. The remainder goes to the relevant prize pool, contract balance or treasury, depending on the action.</li>
+        <li><b>$wif does the work:</b> ranked entry ({fmt(d.fee)} WIF), the shop (potions, whetstones, wards), and on-chain transfers to friends resolved through off-chain @names.</li>
+        <li><b>Fees.</b> The deployed FeeSink contracts transfer configured fee shares to the dead address. They do not call the token's native supply-reduction function. Current shares: Game, Shop and Armory 50%; Quest and PvP stake 10%. Username registration is off-chain. The remainder goes to the relevant prize pool, contract balance or treasury, depending on the action.</li>
         <li><b>Ranked prize loop.</b> 80% of ranked-entry and daily-item fees enter that day's Game prize pool. After the day ends, anyone can settle it and the top ranked player receives the pool. If nobody qualifies, it rolls into the current day. This is separate from the Armory's prefunded kill/level reward balance.</li>
-        <li><b>Levels.</b> Walk out of town through the Dungeon Gate. Five levels, each a few rooms and an original boss with a special move. Clear a boss and the server signs a checkpoint that you record on-chain (free), which unlocks the next level and gives you crafting materials.</li>
+        <li><b>Campaign.</b> Twelve levels, each with three enemy types, rising difficulty and a distinct boss with a special move. Clear each boss to record a checkpoint and unlock the next level.</li>
         <li><b>Forge.</b> Turn iron, hide and glow into a Sword (+ATK), Armor (+DEF) or Charm (+HP), up to tier 3. Each craft costs {fmt(d.craftFee)} WIF per tier: 20% is sent to the dead address; the rest is retained or routed by the Quest contract. Gear counts in every run and in PvP.</li>
         <li><b>Arena.</b> Register your fighter after clearing level 1, then challenge players or the six NPCs. Each challenge stakes {fmt(d.pvpStake)} WIF. Win and you get 90% back; lose and the defender (or the prize pool, for NPCs) gets 90%. 10% of the stake is sent to the dead address. Defending is free. Your stake locks first; then our server signs the duel and its signature becomes the seed, so the outcome can't be predicted or rerolled. If a duel is ever stuck for an hour, you can take your stake back.</li>
         <li><b>Score verification.</b> Runs are deterministic. The server replays your exact moves before signing a score, and the contract accepts each signature only once. This is a practical anti-cheat step because the browser cannot simply submit an arbitrary score, but it still trusts the replay service and signer. Planned upgrades: publish replay inputs, enable independent replay checks, add a dispute window, and make reward claims independently verifiable.</li>

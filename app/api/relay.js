@@ -20080,7 +20080,6 @@ var deployments_default = {
   relayer: "0x00E7Aca39A2d988Bdd2A2EaD0c383AfD6E45A26a",
   gasFeeWei: "200000000000000000",
   rewardScaleBps: 1e3,
-  starter: 5
 };
 
 // src/shared/chain.ts
@@ -20127,15 +20126,13 @@ var gameAbi = parseAbi([
   "event RunRecorded(address indexed player, uint64 indexed day, uint32 score, uint32 xp, uint32 streak, bool newLeader)"
 ]);
 var shopAbi = parseAbi([
-  "function starter()",
   "function buy(uint8)",
   "function equip(uint8)",
   "function claimDrop(uint8,uint256,bytes)",
   "function price(uint8) view returns (uint256)",
-  "function wardrobe(address) view returns (uint32 mask, uint8 eq, bool starterUsed)",
+  "function wardrobe(address) view returns (uint32 mask, uint8 eq, bool)",
   "function equipped(address) view returns (uint8)",
   "function totalDestroyed() view returns (uint256)",
-  "function gotStarter(address) view returns (bool)",
   "event Bought(address indexed who, uint8 id, uint256 price)",
   "event Destroyed(uint256 amount, bool viaBurn)"
 ]);
@@ -20268,7 +20265,7 @@ function checkCall(c) {
       if (!ours.slice(1).includes(getAddress(f.args[0]))) throw new Error("approve only our contracts");
     } else if (f.functionName === "transfer") {
       const dest = getAddress(f.args[0]);
-      if (dest !== DEAD && (!D.relayer || dest !== getAddress(D.relayer))) throw new Error("transfer only for the gas fee");
+      if (dest === "0x0000000000000000000000000000000000000000") throw new Error("transfer to zero address");
     } else throw new Error(`token call not sponsored: ${f.functionName}`);
   } else if (to === ours[1]) decodeFunctionData({ abi: gameAbi, data: c.data });
   else if (to === ours[2]) decodeFunctionData({ abi: namesAbi, data: c.data });
@@ -20282,13 +20279,10 @@ function checkCall(c) {
 }
 var DEAD = getAddress("0x000000000000000000000000000000000000dEaD");
 function isOnboarding(calls) {
-  if (!calls.length || calls.length > 2) return false;
-  return calls.every((c) => {
-    const to = getAddress(c.to);
-    if (D.shop && to === getAddress(D.shop)) return decodeFunctionData({ abi: shopAbi, data: c.data }).functionName === "starter";
-    if (to === getAddress(D.names)) return decodeFunctionData({ abi: namesAbi, data: c.data }).functionName === "claim";
-    return false;
-  });
+  if (calls.length !== 1) return false;
+  const call = calls[0];
+  if (getAddress(call.to) !== getAddress(D.names)) return false;
+  return decodeFunctionData({ abi: namesAbi, data: call.data }).functionName === "claim";
 }
 async function checkGasFee(calls, from16) {
   const need = gasFeeCalls();
@@ -20302,8 +20296,6 @@ async function checkGasFee(calls, from16) {
   }
   if (calls.length < 3 || need.some((c, i) => calls[i].data.toLowerCase() !== c.data.toLowerCase() || getAddress(calls[i].to) !== getAddress(c.to)))
     throw new Error("gas fee in WIF missing");
-  if (calls.slice(2).some((c) => getAddress(c.to) === getAddress(D.wif) && decodeFunctionData({ abi: wifAbi, data: c.data }).functionName === "transfer"))
-    throw new Error("transfer only for the gas fee");
 }
 async function relay(body) {
   if (D.sponsor !== "relay7702") throw new Error("relay disabled (sponsor mode " + D.sponsor + ")");
@@ -20314,6 +20306,8 @@ async function relay(body) {
   const calls = body.calls.map((c) => ({ to: getAddress(c.to), value: BigInt(c.value), data: c.data }));
   if (calls.length < 1 || calls.length > 8) throw new Error("1-8 calls");
   calls.forEach(checkCall);
+  const startsDuel = calls.some((c) => getAddress(c.to) === getAddress(D.quest) && decodeFunctionData({ abi: questAbi, data: c.data }).functionName === "challenge");
+  if (startsDuel && !process.env.RUN_SIGNER_KEY?.trim()) throw new Error("RUN_SIGNER_KEY not set; arena duel resolution is unavailable. No transaction was sent.");
   await checkGasFee(calls, from16);
   const p = pub();
   const code = await p.getCode({ address: from16 });
@@ -20352,7 +20346,7 @@ async function relay(body) {
   const fee = BigInt(D.gasFeeWei || "0");
   if (fee && !isOnboarding(calls)) {
     const bal = await p.readContract({ address: D.wif, abi: wifAbi, functionName: "balanceOf", args: [from16] });
-    if (bal < fee) throw new Error(`no gas wif: every move costs ${Number(fee) / 1e18} WIF in gas and you have ${Number(bal * 1000n / 10n ** 18n) / 1e3}. Claim your welcome gift first.`);
+    if (bal < fee) throw new Error(`no gas wif: every move costs ${Number(fee) / 1e18} WIF in gas and you have ${Number(bal * 1000n / 10n ** 18n) / 1e3}. Earn WIF in the dungeon or receive WIF from another player.`);
   }
   let gas;
   try {
